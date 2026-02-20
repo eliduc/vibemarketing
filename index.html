@@ -1,0 +1,2818 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeMarketing</title>
+    <style>
+        :root {
+            --bg: #0b0d14;
+            --panel: #13151f;
+            --border: #1f2233;
+            --text: #d8dae8;
+            --dim: #6a6d82;
+            --accent: #4f8cff;
+            --purple: #7c5cfc;
+            --green: #34d399;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg); color: var(--text);
+            overflow: hidden; height: 100vh;
+        }
+        #topbar {
+            position:fixed; top:0; left:0; right:0; height:48px;
+            background: var(--panel); border-bottom:1px solid var(--border);
+            display:flex; align-items:center; padding:0 16px; gap:10px; z-index:100;
+        }
+        #topbar h1 {
+            font-size:15px; font-weight:600; white-space:nowrap;
+            background:linear-gradient(135deg,var(--accent),var(--purple));
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+        }
+        .sep { width:1px; height:24px; background:var(--border); }
+        .btn {
+            padding:5px 12px; border-radius:5px; border:1px solid var(--border);
+            background:var(--panel); color:var(--text); font-size:12px; cursor:pointer;
+            white-space:nowrap;
+        }
+        .btn:hover { border-color:var(--accent); background:#1a1d2a; }
+        .btn-p { background:var(--accent); border-color:var(--accent); color:#fff; }
+        .btn.active { border-color:var(--accent); background:#1a2a40; }
+        .btn-icon {
+            padding:5px 8px; border-radius:5px; border:1px solid var(--border);
+            background:var(--panel); color:var(--dim); cursor:pointer; display:flex;
+            align-items:center; justify-content:center; width:32px; height:32px;
+        }
+        .btn-icon:hover { border-color:var(--accent); color:var(--text); background:#1a1d2a; }
+        .btn-icon.active { border-color:var(--accent); color:var(--accent); background:#1a2a40; }
+        .btn-icon svg { width:16px; height:16px; fill:currentColor; }
+        .flt-btns { display:flex; gap:4px; margin-bottom:4px; }
+        .flt-btns button { font-size:10px; padding:2px 8px; border:1px solid var(--border); border-radius:3px; background:var(--panel); color:var(--dim); cursor:pointer; }
+        .flt-btns button:hover { border-color:var(--accent); color:var(--text); }
+        .stats { margin-left:auto; font-size:11px; color:var(--dim); display:flex; gap:14px; }
+        .stats b { color:var(--text); }
+
+        #canvas-wrap { position:fixed; top:48px; left:0; right:320px; bottom:0; }
+        #canvas-wrap.full { right:0; }
+        canvas { display:block; }
+
+        #panel {
+            position:fixed; top:48px; right:0; width:320px; bottom:0;
+            background:var(--panel); border-left:1px solid var(--border);
+            overflow-y:auto; padding:14px; z-index:90; transition:transform .25s;
+        }
+        #panel.hide { transform:translateX(320px); }
+        #panel .panel-close {
+            position:absolute; top:10px; right:10px; background:none; border:1px solid var(--border);
+            color:var(--dim); font-size:18px; cursor:pointer; width:28px; height:28px;
+            border-radius:5px; display:flex; align-items:center; justify-content:center; line-height:1;
+        }
+        #panel .panel-close:hover { border-color:var(--accent); color:var(--text); background:#1a1d2a; }
+        #panel h3 { font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--dim); margin:12px 0 6px; }
+        #panel h3:first-child { margin-top:0; }
+        .leg { display:flex; align-items:center; gap:6px; padding:2px 0; font-size:12px; }
+        .leg-dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+        .flt label { display:flex; align-items:center; gap:6px; padding:2px 0; font-size:12px; cursor:pointer; }
+        .flt input { accent-color:var(--accent); }
+
+        #tip {
+            position:fixed; pointer-events:none; display:none;
+            background:rgba(13,15,22,.94); border:1px solid var(--border);
+            border-radius:8px; padding:10px 14px; font-size:12px; line-height:1.6;
+            max-width:320px; z-index:200; box-shadow:0 8px 30px rgba(0,0,0,.5);
+        }
+        #tip .t-name { font-size:14px; font-weight:600; }
+        #tip .t-dim { color:var(--dim); }
+        #tip .t-badge {
+            display:inline-block; padding:1px 8px; border-radius:3px;
+            font-size:11px; font-weight:600; margin-top:4px;
+        }
+
+        #upload {
+            position:fixed; top:48px; left:0; right:0; bottom:0;
+            background:rgba(11,13,20,.92); display:flex; align-items:center;
+            justify-content:center; z-index:150;
+        }
+        #upload.gone { display:none; }
+        .ucard {
+            background:var(--panel); border:2px dashed var(--border);
+            border-radius:14px; padding:50px 70px; text-align:center;
+        }
+        .ucard.over { border-color:var(--accent); }
+        .ucard h2 { font-size:18px; margin-bottom:6px; }
+        .ucard p { color:var(--dim); font-size:13px; margin-bottom:20px; }
+        .ucard .or { color:var(--dim); font-size:12px; margin:14px 0; }
+        #finp { display:none; }
+
+        #detail {
+            position:fixed; top:48px; left:0; width:350px; bottom:0;
+            background:var(--panel); border-right:1px solid var(--border);
+            overflow-y:auto; padding:18px; z-index:90;
+            transform:translateX(-350px); transition:transform .25s;
+        }
+        #detail.open { transform:translateX(0); }
+        #detail h2 { font-size:15px; margin-bottom:3px; }
+        .dmeta { color:var(--dim); font-size:12px; margin-bottom:14px; line-height:1.6; }
+        .tl { padding-left:20px; position:relative; }
+        .tl::before { content:''; position:absolute; left:6px; top:2px; bottom:2px; width:2px; background:var(--border); }
+        .tl-i { position:relative; margin-bottom:14px; }
+        .tl-i::before {
+            content:''; position:absolute; left:-18px; top:3px;
+            width:8px; height:8px; border-radius:50%;
+            border:2px solid var(--accent); background:var(--bg);
+        }
+        .tl-i.done::before { background:var(--accent); }
+        .tl-i .t { font-size:12px; font-weight:600; }
+        .tl-i .d { font-size:11px; color:var(--dim); }
+        .tl-i .e { font-size:11px; color:var(--accent); }
+        .cls { position:absolute; top:14px; right:14px; background:none; border:none; color:var(--dim); font-size:18px; cursor:pointer; }
+
+        #keys {
+            position:fixed; bottom:12px; left:12px;
+            background:var(--panel); border:1px solid var(--border);
+            border-radius:8px; padding:10px 16px; font-size:11px; color:var(--dim);
+            z-index:100; line-height:2; max-width:calc(100vw - 360px);
+            transition: transform .25s, opacity .25s;
+        }
+        #keys.hide { transform:translateY(100px); opacity:0; pointer-events:none; }
+        #keys kbd {
+            display:inline-block; padding:0 5px; background:#1a1d2a;
+            border:1px solid var(--border); border-radius:3px; font-size:10px; color:var(--text);
+        }
+        #keys b { color:var(--text); font-size:10px; }
+
+        /* Edit mode */
+        #editPanel {
+            position:fixed; top:48px; left:0; width:350px; bottom:0;
+            background:var(--panel); border-right:1px solid var(--border);
+            overflow-y:auto; padding:18px; z-index:90;
+            transform:translateX(-350px); transition:transform .25s;
+        }
+        #editPanel.open { transform:translateX(0); }
+        #editPanel h2 { font-size:14px; margin-bottom:12px; color:var(--accent); }
+        #editPanel label { display:block; font-size:12px; color:var(--dim); margin:8px 0 3px; }
+        #editPanel select, #editPanel input[type=date] {
+            width:100%; padding:6px 8px; background:#1a1d2a; border:1px solid var(--border);
+            color:var(--text); border-radius:4px; font-size:12px;
+        }
+        #editPanel select:focus, #editPanel input:focus { border-color:var(--accent); outline:none; }
+        .edit-actions { display:flex; gap:8px; margin-top:14px; }
+        .edit-actions button { flex:1; padding:6px; border-radius:4px; font-size:12px; cursor:pointer; border:1px solid var(--border); }
+        .edit-save { background:var(--accent); border-color:var(--accent)!important; color:#fff; }
+        .edit-save:hover { opacity:0.9; }
+        .edit-del { background:#3a1520; border-color:#6b2030!important; color:#f87171; }
+        .edit-del:hover { background:#4a1828; }
+        .edit-cancel { background:var(--panel); color:var(--dim); }
+        .edit-cancel:hover { border-color:var(--accent); color:var(--text); }
+        .edit-info { font-size:12px; color:var(--dim); padding:4px 0; line-height:1.6; }
+        .edit-info b { color:var(--text); }
+
+        /* Context menu */
+        #ctxMenu {
+            position:fixed; display:none; z-index:300;
+            background:var(--panel); border:1px solid var(--border);
+            border-radius:6px; padding:4px 0; box-shadow:0 4px 20px rgba(0,0,0,.5);
+            min-width:160px;
+        }
+        #ctxMenu .ctx-item {
+            padding:6px 14px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:8px;
+        }
+        #ctxMenu .ctx-item:hover { background:#1a1d2a; }
+        #ctxMenu .ctx-item.ctx-del { color:#f87171; }
+        #ctxMenu .ctx-sep { height:1px; background:var(--border); margin:4px 0; }
+
+        /* Mode indicator */
+        .mode-indicator {
+            position:fixed; bottom:50px; left:50%; transform:translateX(-50%);
+            background:var(--accent); color:#fff; padding:5px 16px; border-radius:20px;
+            font-size:12px; font-weight:600; z-index:100; pointer-events:none;
+            transition:opacity .3s; opacity:0;
+        }
+        .mode-indicator.show { opacity:1; }
+
+        /* 2D View */
+        #view2d {
+            position:fixed; top:48px; left:0; right:320px; bottom:0;
+            background:var(--bg); overflow:auto; display:none; z-index:80;
+        }
+        #view2d.full { right:0; }
+        #view2d.active { display:block; }
+        #view2d table { border-collapse:collapse; margin:20px; }
+        #view2d th { font-size:10px; color:var(--dim); padding:3px 4px; text-align:center; min-width:32px;
+            position:sticky; top:0; background:var(--bg); z-index:2; }
+        #view2d th.co-header { text-align:right; padding-right:8px; font-size:11px; color:var(--text);
+            position:sticky; left:0; background:var(--bg); z-index:3; white-space:nowrap; max-width:180px; overflow:hidden; text-overflow:ellipsis; }
+        #view2d th.corner { position:sticky; left:0; top:0; z-index:4; background:var(--bg); }
+        #view2d td { padding:2px; text-align:center; }
+        .cell2d {
+            width:28px; height:28px; border-radius:3px; display:inline-block; cursor:pointer;
+            border:1px solid transparent; transition:transform .15s, box-shadow .15s;
+        }
+        .cell2d:hover { transform:scale(1.3); box-shadow:0 0 8px rgba(79,140,255,.5); z-index:10; position:relative; }
+        .cell2d.empty-cell { background:#1a1d2a; border-color:var(--border); opacity:0.3; }
+        .cell2d.empty-cell:hover { opacity:0.7; border-color:var(--accent); }
+        .cell2d.filled { border-color:rgba(255,255,255,.15); }
+        .cell2d.blink2d {
+            animation: blink2d 1.2s ease-in-out infinite;
+        }
+        @keyframes blink2d {
+            0%, 100% { opacity:1; box-shadow:0 0 4px rgba(79,140,255,.3); }
+            50% { opacity:0.4; box-shadow:0 0 12px rgba(79,140,255,.7); }
+        }
+
+        /* Custom confirm dialog */
+        #confirmOverlay {
+            position:fixed; top:0; left:0; right:0; bottom:0;
+            background:rgba(0,0,0,.6); z-index:500; display:none;
+            align-items:center; justify-content:center;
+        }
+        #confirmOverlay.show { display:flex; }
+        #confirmBox {
+            background:var(--panel); border:1px solid var(--border); border-radius:12px;
+            padding:24px 30px; max-width:400px; width:90%;
+            box-shadow:0 12px 40px rgba(0,0,0,.6);
+        }
+        #confirmBox .cf-title { font-size:14px; font-weight:600; margin-bottom:8px; color:var(--text); }
+        #confirmBox .cf-msg { font-size:13px; color:var(--dim); margin-bottom:18px; line-height:1.5; }
+        #confirmBox .cf-actions { display:flex; gap:10px; justify-content:flex-end; }
+        #confirmBox .cf-btn { padding:7px 18px; border-radius:6px; font-size:12px; cursor:pointer; border:1px solid var(--border); }
+        #confirmBox .cf-ok { background:#b91c1c; border-color:#b91c1c; color:#fff; }
+        #confirmBox .cf-ok:hover { background:#dc2626; }
+        #confirmBox .cf-cancel { background:var(--panel); color:var(--dim); }
+        #confirmBox .cf-cancel:hover { border-color:var(--accent); color:var(--text); }
+
+        /* Ghost tooltip for 3D add mode */
+        #ghostTip {
+            position:fixed; pointer-events:none; display:none;
+            background:rgba(79,140,255,.15); border:1px solid var(--accent);
+            border-radius:6px; padding:6px 12px; font-size:11px; line-height:1.4;
+            z-index:200; color:var(--accent); backdrop-filter:blur(6px);
+            white-space:nowrap;
+        }
+        #ghostTip b { color:var(--text); }
+
+        /* 2D company logo img */
+        .co-logo { width:16px; height:16px; border-radius:2px; vertical-align:middle; margin-right:4px; }
+
+        /* Timeline view */
+        #viewTimeline {
+            position:fixed; top:48px; left:0; right:320px; bottom:0;
+            background:var(--bg); overflow:auto; display:none; z-index:80;
+        }
+        #viewTimeline.full { right:0; }
+        #viewTimeline.active { display:block; }
+        .tl-container { padding:16px; }
+        .tl-header { display:flex; align-items:flex-end; margin-bottom:4px; padding-left:158px; }
+        .tl-week-label { font-size:9px; color:var(--dim); text-align:center; flex-shrink:0; }
+        .tl-row { display:flex; align-items:center; margin-bottom:1px; min-height:18px; }
+        .tl-row-label { width:150px; flex-shrink:0; font-size:10px; color:var(--dim); text-align:right;
+            padding-right:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .tl-row-bars { display:flex; position:relative; flex:1; height:16px; }
+        .tl-bar {
+            position:absolute; height:14px; border-radius:2px; top:1px;
+            opacity:0.85; cursor:default; transition: opacity .15s;
+            display:flex; align-items:center; justify-content:center; padding:0 2px;
+            font-size:8px; color:#fff; font-weight:600; white-space:nowrap; overflow:hidden;
+        }
+        .tl-bar:hover { opacity:1; box-shadow:0 0 6px rgba(255,255,255,.3); z-index:2; }
+        .tl-grid-line { position:absolute; top:0; bottom:0; width:1px; background:var(--border); opacity:0.3; }
+        .tl-section { margin-bottom:16px; }
+        .tl-section-title { font-size:12px; font-weight:600; color:var(--accent); padding-left:10px;
+            margin-bottom:6px; border-left:3px solid var(--accent); }
+
+        /* Events & Companies views */
+        #viewEvents, #viewCompanies {
+            position:fixed; top:48px; left:0; right:320px; bottom:0;
+            background:var(--bg); overflow:auto; display:none; z-index:80;
+        }
+        #viewEvents.full, #viewCompanies.full { right:0; }
+        #viewEvents.active, #viewCompanies.active { display:block; }
+        .list-view { padding:20px 24px; max-width:1100px; }
+        .list-view h2 { font-size:16px; font-weight:600; color:var(--accent); margin-bottom:14px; }
+        .lv-card {
+            background:var(--panel); border:1px solid var(--border); border-radius:8px;
+            padding:14px 16px; margin-bottom:10px; display:flex; gap:14px; align-items:flex-start;
+            transition: border-color .15s;
+        }
+        .lv-card:hover { border-color:var(--accent); }
+        .lv-color { width:6px; border-radius:3px; align-self:stretch; flex-shrink:0; }
+        .lv-logo { width:36px; height:36px; border-radius:6px; flex-shrink:0; object-fit:cover; }
+        .lv-logo-init { width:36px; height:36px; border-radius:6px; flex-shrink:0; display:flex;
+            align-items:center; justify-content:center; font-size:14px; font-weight:700; color:#fff; }
+        .lv-body { flex:1; min-width:0; }
+        .lv-title { font-size:14px; font-weight:600; color:var(--text); margin-bottom:2px; }
+        .lv-meta { font-size:11px; color:var(--dim); line-height:1.6; }
+        .lv-meta b { color:var(--text); font-weight:500; }
+        .lv-meta .lv-badge {
+            display:inline-block; padding:1px 7px; border-radius:3px;
+            font-size:10px; font-weight:600; color:#fff; margin-left:4px;
+        }
+        .lv-notes { width:100%; margin-top:8px; padding:6px 8px; background:#1a1d2a;
+            border:1px solid var(--border); color:var(--text); border-radius:4px;
+            font-size:12px; font-family:inherit; resize:vertical; min-height:36px; }
+        .lv-notes:focus { border-color:var(--accent); outline:none; }
+        .lv-notes::placeholder { color:var(--dim); }
+        .lv-actions { display:flex; flex-direction:column; gap:4px; flex-shrink:0; align-self:center; }
+        .lv-actions button { padding:4px 10px; border-radius:4px; font-size:11px; cursor:pointer;
+            border:1px solid var(--border); background:var(--panel); color:var(--dim); white-space:nowrap; }
+        .lv-actions button:hover { border-color:var(--accent); color:var(--text); }
+        .lv-actions .lv-del { color:#f87171; }
+        .lv-actions .lv-del:hover { border-color:#f87171; background:#3a1520; }
+        .lv-actions .lv-news { color:#34d399; }
+        .lv-actions .lv-news:hover { border-color:#34d399; background:#1a3a2a; }
+        .lv-add-btn { display:inline-block; margin-top:10px; padding:8px 20px; border-radius:6px;
+            border:1px dashed var(--border); background:transparent; color:var(--accent);
+            font-size:13px; cursor:pointer; transition: border-color .15s, background .15s; }
+        .lv-add-btn:hover { border-color:var(--accent); background:#1a2a40; }
+
+        /* News iframe overlay */
+        #newsOverlay {
+            position:fixed; top:0; left:0; right:0; bottom:0;
+            background:rgba(0,0,0,.7); z-index:600; display:none;
+            flex-direction:column;
+        }
+        #newsOverlay.show { display:flex; }
+        .news-header {
+            height:44px; display:flex; align-items:center; padding:0 16px; gap:12px;
+            background:var(--panel); border-bottom:1px solid var(--border); flex-shrink:0;
+        }
+        .news-header .news-title {
+            flex:1; font-size:13px; font-weight:600; color:var(--text);
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        }
+        .news-header .news-open-ext {
+            padding:4px 12px; border-radius:4px; font-size:11px; cursor:pointer;
+            border:1px solid var(--border); background:var(--panel); color:var(--dim);
+            white-space:nowrap;
+        }
+        .news-header .news-open-ext:hover { border-color:var(--accent); color:var(--text); }
+        .news-header .news-close {
+            padding:4px 12px; border-radius:4px; font-size:11px; cursor:pointer;
+            border:1px solid var(--border); background:var(--panel); color:#f87171;
+            white-space:nowrap;
+        }
+        .news-header .news-close:hover { border-color:#f87171; background:#3a1520; }
+        #newsFrame {
+            flex:1; border:none; background:#fff; width:100%;
+        }
+
+        /* Form modal */
+        #formModal {
+            position:fixed; top:0; left:0; right:0; bottom:0;
+            background:rgba(0,0,0,.6); z-index:500; display:none;
+            align-items:center; justify-content:center;
+        }
+        #formModal.show { display:flex; }
+        .fm-box {
+            background:var(--panel); border:1px solid var(--border); border-radius:12px;
+            padding:24px 30px; max-width:440px; width:90%;
+            box-shadow:0 12px 40px rgba(0,0,0,.6);
+        }
+        .fm-box h2 { font-size:15px; font-weight:600; margin-bottom:14px; color:var(--accent); }
+        .fm-box label { display:block; font-size:12px; color:var(--dim); margin:10px 0 3px; }
+        .fm-box input[type=text], .fm-box input[type=number], .fm-box select {
+            width:100%; padding:7px 10px; background:#1a1d2a; border:1px solid var(--border);
+            color:var(--text); border-radius:5px; font-size:13px;
+        }
+        .fm-box input:focus, .fm-box select:focus { border-color:var(--accent); outline:none; }
+        .fm-row { display:flex; gap:8px; align-items:flex-end; }
+        .fm-row > * { flex:1; }
+        .fm-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:18px; }
+        .fm-actions button { padding:7px 20px; border-radius:6px; font-size:12px; cursor:pointer; border:1px solid var(--border); }
+        .fm-ok { background:var(--accent); border-color:var(--accent)!important; color:#fff; }
+        .fm-ok:hover { opacity:0.9; }
+        .fm-cancel { background:var(--panel); color:var(--dim); }
+        .fm-cancel:hover { border-color:var(--accent); color:var(--text); }
+        /* Color palette */
+        .color-pal { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+        .color-sw {
+            width:26px; height:26px; border-radius:50%; cursor:pointer;
+            border:2px solid transparent; transition:transform .15s, border-color .15s;
+        }
+        .color-sw:hover { transform:scale(1.2); }
+        .color-sw.sel { border-color:#fff; transform:scale(1.2); }
+
+        ::-webkit-scrollbar { width:5px; }
+        ::-webkit-scrollbar-track { background:transparent; }
+        ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+    </style>
+</head>
+<body>
+<div id="topbar">
+    <h1>VibeMarketing</h1>
+    <div class="sep"></div>
+    <button class="btn tb-always" id="bLoad">Загрузить</button>
+    <button class="btn tb-always" id="bDemo">Демо</button>
+    <button class="btn tb-3d" id="bReset">Сброс камеры</button>
+    <button class="btn tb-nav" id="bTo3D" title="3D вид (T)" style="display:none">3D</button>
+    <button class="btn tb-nav" id="bTo2D" title="2D вид (T)">2D</button>
+    <button class="btn tb-nav" id="bToTimeline" title="Таймлайн (Y)">Таймлайн</button>
+    <button class="btn tb-nav" id="bToEvents" title="Мероприятия">Мероприятия</button>
+    <button class="btn tb-nav" id="bToCompanies" title="Компании">Компании</button>
+    <div class="sep tb-viz"></div>
+    <button class="btn-icon active tb-3d" id="bLabels" title="Подписи (L)"><svg viewBox="0 0 24 24"><path d="M5 4v3h5.5v12h3V7H19V4z"/></svg></button>
+    <button class="btn-icon tb-3d" id="bGrid" title="Сетка все (G)"><svg viewBox="0 0 24 24"><path d="M3 3v18h18V3H3zm8 16H5v-6h6v6zm0-8H5V5h6v6zm8 8h-6v-6h6v6zm0-8h-6V5h6v6z"/></svg></button>
+    <button class="btn-icon tb-3d" id="bGridXY" title="Сетка XY (компании×мероприятия)"><svg viewBox="0 0 24 24"><path d="M3 3h18v18H3V3zm2 2v14h14V5H5z"/><path d="M5 9h14M5 13h14M5 17h14M9 5v14M13 5v14M17 5v14" stroke="currentColor" stroke-width="1" fill="none"/></svg></button>
+    <button class="btn-icon tb-3d" id="bGridXZ" title="Сетка XZ (мероприятия×недели)"><svg viewBox="0 0 24 24"><path d="M3 21L12 3l9 18H3z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 15h12M9 9h6" stroke="currentColor" stroke-width="1" fill="none"/></svg></button>
+    <button class="btn-icon tb-3d" id="bGridYZ" title="Сетка YZ (компании×недели)"><svg viewBox="0 0 24 24"><path d="M4 4l8 4v12l-8-4V4z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 8l8-4v12l-8 4V8z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button>
+    <button class="btn-icon active tb-viz" id="bKeys" title="Подсказки (H)"><svg viewBox="0 0 24 24"><path d="M20 5H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/></svg></button>
+    <button class="btn-icon active tb-viz" id="bPanel" title="Панель (P)"><svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg></button>
+    <button class="btn-icon active tb-3d" id="bBlink" title="Мигание посл. недели (B)"><svg viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg></button>
+    <div class="sep tb-viz"></div>
+    <button class="btn-icon tb-3d" id="bAddMode" title="Режим добавления (N)"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></button>
+    <button class="btn tb-viz" id="bAddWeek" title="Добавить неделю">+W</button>
+    <button class="btn tb-always" id="bAddEvent" title="Добавить мероприятие">+М</button>
+    <button class="btn tb-always" id="bAddCompany" title="Добавить компанию">+К</button>
+    <button class="btn tb-always" id="bSave" title="Сохранить (Ctrl+S)" style="background:#1a3a2a;border-color:#2d6b4a;color:#34d399;">💾 Save</button>
+    <div class="stats tb-always">
+        Компании: <b id="sC">0</b>&nbsp;&nbsp;
+        Мероприятия: <b id="sE">0</b>&nbsp;&nbsp;
+        Недели: <b id="sW">0</b>&nbsp;&nbsp;
+        Точки: <b id="sA">0</b>
+    </div>
+</div>
+
+<div id="upload">
+    <div class="ucard" id="ucard">
+        <h2>Загрузите данные</h2>
+        <p>Excel файл (.xlsx) или демо-данные</p>
+        <button class="btn btn-p" id="bFile">Выбрать файл</button>
+        <input type="file" id="finp" accept=".xlsx,.xls,.csv">
+        <div class="or">или</div>
+        <button class="btn" id="bDemoU">Демо-данные</button>
+    </div>
+</div>
+<script>
+// Immediately hide upload screen if saved data exists (prevent flash)
+if (localStorage.getItem('marketingPipelineData')) document.getElementById('upload').classList.add('gone');
+</script>
+
+<div id="panel">
+    <button class="panel-close" id="clsPanel" title="Закрыть панель (P)">&times;</button>
+    <h3>Этапы воронки</h3>
+    <div class="flt-btns"><button id="fltSAll">Все</button><button id="fltSNone">Снять</button></div>
+    <div id="fltS" class="flt"></div>
+    <h3>Мероприятия</h3>
+    <div class="flt-btns"><button id="fltEAll">Все</button><button id="fltENone">Снять</button></div>
+    <div id="fltE" class="flt"></div>
+    <h3>Регионы</h3>
+    <div class="flt-btns"><button id="fltRAll">Все</button><button id="fltRNone">Снять</button></div>
+    <div id="fltR" class="flt"></div>
+</div>
+
+<div id="detail">
+    <button class="cls" id="clsDet">&times;</button>
+    <div id="detC"></div>
+</div>
+
+<div id="tip"></div>
+
+<div id="editPanel">
+    <button class="cls" id="clsEdit">&times;</button>
+    <h2 id="editTitle">Редактирование</h2>
+    <div class="edit-info" id="editInfo"></div>
+    <label>Этап воронки</label>
+    <select id="editStage"></select>
+    <label>Дата</label>
+    <input type="date" id="editDate">
+    <div class="edit-actions">
+        <button class="edit-save" id="editSave">Сохранить</button>
+        <button class="edit-del" id="editDel">Удалить</button>
+        <button class="edit-cancel" id="editCancel">Отмена</button>
+    </div>
+</div>
+
+<div id="ctxMenu">
+    <div class="ctx-item" id="ctxEdit">&#9998; Редактировать</div>
+    <div class="ctx-item" id="ctxAdd">&#10010; Добавить рядом</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item ctx-del" id="ctxDel">&#10006; Удалить</div>
+</div>
+
+<div class="mode-indicator" id="modeInd">Режим добавления (Shift+Click)</div>
+
+<div id="keys">
+    <b>Тачпэд:</b>
+    <kbd>ЛКМ</kbd>+тянуть — вращение &nbsp;
+    <kbd>2 пальца</kbd> свайп — перемещение ↕↔ &nbsp;
+    <kbd>Щипок</kbd> — масштаб &nbsp;
+    <kbd>Клик</kbd> — детали
+    <br>
+    <b>Клавиатура:</b>
+    <kbd>←→↑↓</kbd> вращение &nbsp;
+    <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> перемещение ↕↔ &nbsp;
+    <kbd>Q</kbd> вверх <kbd>E</kbd> вниз &nbsp;
+    <kbd>Z</kbd><kbd>X</kbd> / <kbd>+</kbd><kbd>−</kbd> масштаб &nbsp;
+    <kbd>1</kbd>-<kbd>6</kbd> виды &nbsp;
+    <kbd>R</kbd> сброс &nbsp;
+    <kbd>L</kbd> подписи &nbsp;
+    <kbd>G</kbd> сетка &nbsp;
+    <kbd>B</kbd> мигание &nbsp;
+    <kbd>N</kbd> добавить &nbsp;
+    <kbd>T</kbd> 2D/3D &nbsp;
+    <kbd>Y</kbd> таймлайн &nbsp;
+    <kbd>Del</kbd> удалить &nbsp;
+    <kbd>Ctrl+S</kbd> сохранить &nbsp;
+    <kbd>H</kbd> легенда &nbsp;
+    <kbd>P</kbd> панель &nbsp;
+    <kbd>F</kbd> полный экран &nbsp;
+    <kbd>Esc</kbd> закрыть
+</div>
+
+<div id="ghostTip"></div>
+
+<div id="confirmOverlay">
+    <div id="confirmBox">
+        <div class="cf-title" id="cfTitle">Подтверждение</div>
+        <div class="cf-msg" id="cfMsg"></div>
+        <div class="cf-actions">
+            <button class="cf-btn cf-cancel" id="cfCancel">Отмена</button>
+            <button class="cf-btn cf-ok" id="cfOk">Удалить</button>
+        </div>
+    </div>
+</div>
+
+<div id="formModal">
+    <div class="fm-box" id="fmBox"></div>
+</div>
+
+<div id="newsOverlay">
+    <div class="news-header">
+        <span class="news-title" id="newsTitle">Новости</span>
+        <button class="news-open-ext" id="newsOpenExt">↗ Открыть в браузере</button>
+        <button class="news-close" id="newsClose">✕ Закрыть</button>
+    </div>
+    <iframe id="newsFrame" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+</div>
+
+<div id="view2d"></div>
+<div id="viewTimeline"></div>
+<div id="viewEvents"></div>
+<div id="viewCompanies"></div>
+<div id="canvas-wrap"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// ============================
+// CONFIG & DATA
+// ============================
+const STAGES = [
+    { id:'first_contact',  name:'Первый контакт',        order:1 },
+    { id:'second_contact', name:'Второй контакт',        order:2 },
+    { id:'third_contact',  name:'Третий контакт',        order:3 },
+    { id:'presentation',   name:'Презентация',           order:4 },
+    { id:'discussion',     name:'Обсуждение',            order:5 },
+    { id:'demo',           name:'Демо продукта',         order:6 },
+    { id:'mockup',         name:'Макет',                 order:7 },
+    { id:'trial',          name:'Тестовый период',       order:8 },
+    { id:'negotiation',    name:'Согласование',          order:9 },
+    { id:'pre_contract',   name:'Подготовка контракта',  order:10 },
+    { id:'contract',       name:'Контракт подписан',     order:11 },
+];
+const SCOLORS = [
+    '#6b7280','#8b95a5','#4f8cff','#7c5cfc','#a855f7',
+    '#ec4899','#f97316','#fbbf24','#84cc16','#22d3ee','#34d399',
+];
+// Events with timing metadata:
+//   weekStart: earliest week the event can start (0-based)
+//   duration:  how many weeks the event spans (for timeline view)
+const EVENTS_META = [
+    { name:'Email-рассылка',   weekStart:0, duration:1,  color:'#6366f1' },
+    { name:'Выставка',         weekStart:2, duration:1,  color:'#f43f5e' },
+    { name:'Подкаст',          weekStart:1, duration:3,  color:'#8b5cf6' },
+    { name:'Корп. завтрак',    weekStart:3, duration:1,  color:'#f97316' },
+    { name:'Вебинар',          weekStart:1, duration:1,  color:'#0ea5e9' },
+    { name:'Интернет-сайт',    weekStart:0, duration:99, color:'#10b981' }, // длится весь период
+    { name:'Конференция',      weekStart:4, duration:1,  color:'#e11d48' },
+    { name:'Холодный звонок',  weekStart:0, duration:1,  color:'#64748b' },
+    { name:'Рекомендация',     weekStart:2, duration:1,  color:'#a855f7' },
+    { name:'Соцсети',          weekStart:0, duration:99, color:'#06b6d4' }, // длятся весь период
+];
+let EVENTS = EVENTS_META.map(e => e.name);
+let EVENT_COLORS = {};
+EVENTS_META.forEach(e => EVENT_COLORS[e.name] = e.color);
+
+function rebuildEventsDerived() {
+    EVENTS = EVENTS_META.map(e => e.name);
+    EVENT_COLORS = {};
+    EVENTS_META.forEach(e => EVENT_COLORS[e.name] = e.color);
+}
+
+// Company logo URLs — use Google favicons (reliable, no CORS issues)
+const LOGO_DOMAINS = {
+    'ПИК': 'pik.ru',
+    'ЛСР Групп': 'lsr.ru',
+    'Самолёт': 'samolet.ru',
+    'Эталон': 'etalongroup.ru',
+    'Брусника': 'brusnika.ru',
+    'А101': 'a101.ru',
+    'Донстрой': 'donstroy.moscow',
+    'Setl Group': 'setlgroup.ru',
+    'ЮгСтройИнвест': 'gk-usi.ru',
+    'Унистрой': 'unistroyrf.ru',
+    'Талан': 'talan.ru',
+    'Железно': 'zhcom.ru',
+    'DOGMA': 'dogma.ru',
+    'Страна Дев.': 'strana.com',
+    'СПб Реновация': 'spbren.ru',
+    'ГК Монолит': 'gk-monolit.ru',
+    'АСК': 'ask-yug.com',
+    'Атомстройкомплекс': 'atomstroy.net',
+    'ЮИТ Россия': 'yit.ru',
+    'KR Properties': 'kr-pro.ru',
+    'ГК Садовое Кольцо': 'sadovoe-kolco.ru',
+    'Сибпромстрой': 'sibpromstroy.ru',
+    'ГК Первый Трест': '1trest.ru',
+    'Девелопмент-Юг': 'develug.ru',
+    'ИНКО': 'gkinko.ru',
+};
+// Build logo URLs using Google Favicons API (no CORS, reliable)
+const LOGO_URLS = {};
+Object.entries(LOGO_DOMAINS).forEach(([name, domain]) => {
+    LOGO_URLS[name] = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+});
+
+function genDemo() {
+    const companies = [
+        {name:'ПИК',region:'Москва',contact:'Иванов С.П.',pos:'Директор по развитию'},
+        {name:'ЛСР Групп',region:'СПб',contact:'Петрова А.В.',pos:'Ком. директор'},
+        {name:'Самолёт',region:'Москва',contact:'Козлов Д.А.',pos:'Рук. закупок'},
+        {name:'Эталон',region:'СПб',contact:'Морозова Е.И.',pos:'Зам. ген. дир.'},
+        {name:'Брусника',region:'Екатеринбург',contact:'Волков А.Н.',pos:'Дир. инноваций'},
+        {name:'А101',region:'Москва',contact:'Соколова М.Д.',pos:'Нач. IT'},
+        {name:'Донстрой',region:'Москва',contact:'Лебедев А.С.',pos:'Тех. директор'},
+        {name:'Setl Group',region:'СПб',contact:'Новикова О.А.',pos:'Дир. маркетинга'},
+        {name:'ЮгСтройИнвест',region:'Краснодар',contact:'Кузнецов И.В.',pos:'Ген. директор'},
+        {name:'Унистрой',region:'Казань',contact:'Фёдоров М.О.',pos:'Фин. директор'},
+        {name:'Талан',region:'Ижевск',contact:'Белова Т.С.',pos:'Дир. продаж'},
+        {name:'Железно',region:'Киров',contact:'Григорьев П.И.',pos:'Рук. проектов'},
+        {name:'DOGMA',region:'Краснодар',contact:'Смирнов В.А.',pos:'Ком. директор'},
+        {name:'Страна Дев.',region:'Тюмень',contact:'Попова Н.В.',pos:'Дир. развития'},
+        {name:'СПб Реновация',region:'СПб',contact:'Орлов А.П.',pos:'IT-директор'},
+        {name:'ГК Монолит',region:'Воронеж',contact:'Захарова И.Ю.',pos:'Рук. закупок'},
+        {name:'АСК',region:'Краснодар',contact:'Тихонов Р.В.',pos:'Зам. директора'},
+        {name:'Атомстройкомплекс',region:'Екатеринбург',contact:'Егорова С.М.',pos:'Гл. инженер'},
+        {name:'ЮИТ Россия',region:'Москва',contact:'Баранов К.Д.',pos:'Дир. стратегии'},
+        {name:'KR Properties',region:'Москва',contact:'Власова Е.А.',pos:'Рук. направления'},
+        {name:'ГК Садовое Кольцо',region:'Москва',contact:'Никитин О.С.',pos:'Ком. директор'},
+        {name:'Сибпромстрой',region:'Сургут',contact:'Медведева Ю.А.',pos:'Нач. IT'},
+        {name:'ГК Первый Трест',region:'Уфа',contact:'Куликов Д.В.',pos:'Тех. директор'},
+        {name:'Девелопмент-Юг',region:'Краснодар',contact:'Степанова А.О.',pos:'Дир. развития'},
+        {name:'ИНКО',region:'Пенза',contact:'Романов С.Н.',pos:'Ген. директор'},
+    ];
+    const acts = [];
+    const baseDate = new Date(2024, 0, 8);
+    companies.forEach(c => {
+        // Each company has ONE initiating event (marketing activity)
+        const ei = Math.floor(Math.random() * EVENTS.length);
+        const evMeta = EVENTS_META[ei];
+        const ev = evMeta.name;
+        // First contact happens AFTER the event starts — spread across weeks
+        // Event weekStart defines earliest possible first contact
+        const startWeek = evMeta.weekStart + Math.floor(Math.random() * 3); // 0-2 weeks after event
+        // Random pipeline depth: minimum 2 stages, up to 11
+        const luck = Math.random();
+        let ms;
+        if (luck < .20) ms = 11;
+        else if (luck < .45) ms = 7 + Math.floor(Math.random() * 4);
+        else if (luck < .75) ms = 4 + Math.floor(Math.random() * 3);
+        else ms = 2 + Math.floor(Math.random() * 2);
+        let curWeek = startWeek;
+        for (let s = 0; s < ms && curWeek < nWeeks; s++) {
+            const sd = new Date(baseDate);
+            sd.setDate(sd.getDate() + curWeek * 7);
+            acts.push({
+                company: c.name, region: c.region, contact: c.contact, position: c.pos,
+                event: ev, stage: STAGES[s].id, stageName: STAGES[s].name,
+                stageOrder: STAGES[s].order, date: sd.toISOString().slice(0, 10),
+            });
+            const gap = Math.random();
+            if (gap < 0.10) curWeek += 3;
+            else if (gap < 0.35) curWeek += 2;
+            else curWeek += 1;
+        }
+    });
+    return { companies, activities: acts };
+}
+
+function parseExcel(file) {
+    return new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = e => {
+            try {
+                const wb = XLSX.read(e.target.result, { type: 'array' });
+                const cs = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                const as = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[1]] || wb.Sheets[wb.SheetNames[0]]);
+                const companies = cs.map(r => ({
+                    name: r['Компания'] || r['company'] || '',
+                    region: r['Регион'] || r['region'] || '',
+                    contact: r['Контакт'] || r['contact'] || '',
+                    pos: r['Должность'] || r['position'] || '',
+                })).filter(c => c.name);
+                const activities = as.map(r => {
+                    const si = STAGES.find(s => s.id === (r['Этап ID'] || r['stage']) || s.name === (r['Этап'] || r['stageName']));
+                    return {
+                        company: r['Компания'] || r['company'] || '',
+                        region: r['Регион'] || r['region'] || '',
+                        contact: r['Контакт'] || r['contact'] || '',
+                        position: r['Должность'] || r['position'] || '',
+                        event: r['Мероприятие'] || r['event'] || '',
+                        stage: si ? si.id : '', stageName: si ? si.name : '',
+                        stageOrder: si ? si.order : 0, date: r['Дата'] || r['date'] || '',
+                    };
+                }).filter(a => a.company && a.event);
+                res({ companies, activities });
+            } catch (err) { rej(err); }
+        };
+        r.onerror = rej;
+        r.readAsArrayBuffer(file);
+    });
+}
+
+// ============================
+// 3D ENGINE
+// ============================
+let scene, cam, rend, ctrl;
+let dGroup, connGroup, floorGroup, labelMeshes = [];
+let allCubes = [], curData = null, hovered = null;
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
+let filters = { events: new Set(), regions: new Set(), stages: new Set() };
+let dims = { totalX: 0, totalY: 0, totalZ: 0, cx: 0, cy: 0, cz: 0 };
+let labelsVisible = true;
+let keysVisible = true;
+let gridVisible = false;
+let gridXY = false, gridXZ = false, gridYZ = false; // individual plane toggles
+let blinkEnabled = true;
+let nWeeks = 12;
+let maxWeekIdx = 11; // last week index (0-based)
+let CELL = 4.6;
+let addMode = false;
+let ghostCube = null;
+let selectedCube = null;
+let editingData = null;
+let dirty = false; // unsaved changes flag
+
+function markDirty() {
+    dirty = true;
+    // Auto-save on every change
+    if (curData) {
+        localStorage.setItem(LS_KEY, JSON.stringify({ curData, nWeeks, eventsMeta: EVENTS_META }));
+        dirty = false;
+    }
+}
+function markClean() {
+    dirty = false;
+    const btn = document.getElementById('bSave');
+    if (btn) { btn.style.background = '#1a3a2a'; btn.style.borderColor = '#2d6b4a'; btn.textContent = '💾 Save'; }
+}
+
+const LS_KEY = 'marketingPipelineData';
+
+function saveToStorage() {
+    if (!curData) return;
+    localStorage.setItem(LS_KEY, JSON.stringify({ curData, nWeeks, eventsMeta: EVENTS_META }));
+    markClean();
+    // Brief visual feedback
+    const btn = document.getElementById('bSave');
+    if (btn) {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Saved';
+        btn.style.background = '#0d5a3a';
+        setTimeout(() => { btn.textContent = '💾 Save'; btn.style.background = '#1a3a2a'; }, 1200);
+    }
+}
+
+function loadFromStorage() {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return null;
+    try {
+        const d = JSON.parse(raw);
+        if (d && d.curData && d.curData.activities) return d;
+    } catch (e) {}
+    return null;
+}
+
+// Preloaded logo images cache
+const logoCache = {};
+let logosReady = false;
+
+// Generate a colored circle with initials as fallback logo
+function generateInitialsLogo(name) {
+    const c = document.createElement('canvas');
+    c.width = 64; c.height = 64;
+    const ctx = c.getContext('2d');
+    // Hash name to color
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    const hue = Math.abs(hash) % 360;
+    ctx.fillStyle = `hsl(${hue}, 55%, 45%)`;
+    ctx.beginPath(); ctx.arc(32, 32, 30, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 28px Segoe UI, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    // Get 1-2 letter initials
+    const parts = name.replace(/[^\wА-Яа-яЁё]/g, ' ').trim().split(/\s+/);
+    const initials = parts.length > 1 ? (parts[0][0] + parts[1][0]).toUpperCase() : name.substring(0, 2).toUpperCase();
+    ctx.fillText(initials, 32, 34);
+    const img = new Image();
+    img.src = c.toDataURL();
+    return img;
+}
+
+// Custom styled confirm dialog (replaces system confirm())
+function customConfirm(message, title) {
+    return new Promise(resolve => {
+        const overlay = document.getElementById('confirmOverlay');
+        const msgEl = document.getElementById('cfMsg');
+        const titleEl = document.getElementById('cfTitle');
+        titleEl.textContent = title || 'Подтверждение';
+        // Support newlines in message
+        msgEl.innerHTML = message.replace(/\n/g, '<br>');
+        overlay.classList.add('show');
+        const ok = document.getElementById('cfOk');
+        const cancel = document.getElementById('cfCancel');
+        function cleanup() {
+            overlay.classList.remove('show');
+            ok.onclick = null; cancel.onclick = null;
+            overlay.onclick = null;
+        }
+        ok.onclick = () => { cleanup(); resolve(true); };
+        cancel.onclick = () => { cleanup(); resolve(false); };
+        overlay.onclick = (e) => { if (e.target === overlay) { cleanup(); resolve(false); } };
+    });
+}
+
+// Logo loading: try fetch (works from http://), fall back to plain img (for 2D HTML), or initials (for 3D canvas)
+// When opened via file:// protocol, CORS blocks fetch() and crossOrigin images.
+// In that case: 3D labels use colored initials, 2D view uses <img> tags directly (no CORS needed for HTML img).
+// To get real logos in 3D, run: python -m http.server 8080
+const isFileProtocol = location.protocol === 'file:';
+
+function preloadLogos() {
+    let loaded = 0;
+    const total = Object.keys(LOGO_URLS).length;
+    return new Promise(resolve => {
+        const done = () => { loaded++; if (loaded >= total) { logosReady = true; resolve(); } };
+
+        if (isFileProtocol) {
+            // file:// — can't fetch or use crossOrigin. Use initials for 3D canvas.
+            // 2D view will use <img> tags directly.
+            Object.keys(LOGO_URLS).forEach(name => {
+                logoCache[name] = generateInitialsLogo(name);
+                done();
+            });
+        } else {
+            // http(s):// — fetch+blob works, real logos in 3D
+            Object.entries(LOGO_URLS).forEach(([name, url]) => {
+                fetch(url, { mode: 'cors' })
+                    .then(r => { if (!r.ok) throw new Error(); return r.blob(); })
+                    .then(blob => {
+                        const objUrl = URL.createObjectURL(blob);
+                        const img = new Image();
+                        img.onload = () => { logoCache[name] = img; done(); };
+                        img.onerror = () => { logoCache[name] = generateInitialsLogo(name); done(); };
+                        img.src = objUrl;
+                    })
+                    .catch(() => { logoCache[name] = generateInitialsLogo(name); done(); });
+            });
+            setTimeout(() => {
+                Object.keys(LOGO_URLS).forEach(name => {
+                    if (!logoCache[name]) logoCache[name] = generateInitialsLogo(name);
+                });
+                logosReady = true; resolve();
+            }, 5000);
+        }
+    });
+}
+preloadLogos();
+
+function init3D() {
+    const wrap = document.getElementById('canvas-wrap');
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0b0d14);
+
+    cam = new THREE.PerspectiveCamera(55, wrap.clientWidth / wrap.clientHeight, 0.1, 2000);
+
+    rend = new THREE.WebGLRenderer({ antialias: true });
+    rend.setSize(wrap.clientWidth, wrap.clientHeight);
+    rend.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    rend.domElement.setAttribute('tabindex', '0');
+    rend.domElement.style.outline = 'none';
+    wrap.appendChild(rend.domElement);
+
+    ctrl = new THREE.OrbitControls(cam, rend.domElement);
+    ctrl.enableDamping = true; ctrl.dampingFactor = 0.1;
+    ctrl.rotateSpeed = 0.5; ctrl.panSpeed = 0.7;
+    ctrl.minDistance = 15; ctrl.maxDistance = 800;
+    ctrl.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+    ctrl.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+
+    ctrl.enableZoom = false;
+    rend.domElement.addEventListener('wheel', e => {
+        e.preventDefault();
+        if (e.ctrlKey) {
+            const zoomDelta = -e.deltaY * 0.01;
+            const dir = ctrl.target.clone().sub(cam.position).normalize();
+            cam.position.add(dir.multiplyScalar(zoomDelta * cam.position.distanceTo(ctrl.target) * 0.15));
+        } else {
+            const panX = -e.deltaX * 0.05;
+            const panY = e.deltaY * 0.05;
+            const right = new THREE.Vector3();
+            cam.getWorldDirection(right);
+            right.crossVectors(right, cam.up).normalize();
+            const up = cam.up.clone().normalize();
+            const move = right.multiplyScalar(panX).add(up.multiplyScalar(panY));
+            cam.position.add(move);
+            ctrl.target.add(move);
+        }
+    }, { passive: false });
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+    const dl = new THREE.DirectionalLight(0xffffff, 0.65);
+    dl.position.set(60, 100, 40); scene.add(dl);
+    scene.add(new THREE.PointLight(0x4f8cff, 0.2, 400));
+
+    dGroup = new THREE.Group(); scene.add(dGroup);
+    connGroup = new THREE.Group(); scene.add(connGroup);
+    floorGroup = new THREE.Group(); scene.add(floorGroup);
+
+    rend.domElement.addEventListener('mousemove', onMove);
+
+    // Right-click context menu
+    rend.domElement.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        const wrap = document.getElementById('canvas-wrap');
+        const rect = wrap.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        ray.setFromCamera(mouse, cam);
+        const hits = ray.intersectObjects(allCubes, false);
+        if (hits.length > 0 && hits[0].object.userData.filled) {
+            showCtxMenu(e.clientX, e.clientY, hits[0].object);
+        }
+    });
+
+    // Track pointer to distinguish short click from drag/rotate
+    let mdX = 0, mdY = 0, mdTime = 0;
+    rend.domElement.addEventListener('pointerdown', e => {
+        mdX = e.clientX; mdY = e.clientY; mdTime = Date.now();
+    }, true);
+    rend.domElement.addEventListener('pointerup', e => {
+        if (e.button === 2) return; // right click handled by contextmenu
+        const dx = e.clientX - mdX, dy = e.clientY - mdY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const dt = Date.now() - mdTime;
+        if (dist < 8 && dt < 400) {
+            const wrap = document.getElementById('canvas-wrap');
+            const rect = wrap.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            ray.setFromCamera(mouse, cam);
+
+            // In add mode or shift+click: try to place on empty cell
+            if (addMode || e.shiftKey) {
+                // Raycast against floor group (empty cubes) to find placement position
+                const emptyHits = ray.intersectObjects(floorGroup.children, false);
+                if (emptyHits.length > 0) {
+                    const h = emptyHits[0].object;
+                    const ud = h.userData;
+                    if (ud.gridCell && curData) {
+                        // Find company and event for this cell
+                        const coNames = [...new Set(curData.companies.map(c => c.name))];
+                        const evNames = [...new Set(curData.activities.map(a => a.event))];
+                        const company = coNames[ud.ci];
+                        const event = evNames[ud.ei];
+                        const comp = curData.companies.find(c => c.name === company);
+                        // Pre-fill new activity data
+                        const baseDate = new Date(Math.min(...curData.activities.map(a => new Date(a.date)).filter(d => !isNaN(d))));
+                        const newDate = new Date(baseDate);
+                        newDate.setDate(newDate.getDate() + ud.wi * 7);
+                        openEditPanel({
+                            userData: {
+                                company, event, wi: ud.wi,
+                                region: comp ? comp.region : '',
+                                contact: comp ? comp.contact : '',
+                                position: comp ? comp.pos : '',
+                                stage: STAGES[0].id,
+                                date: newDate.toISOString().slice(0, 10),
+                            }
+                        }, true);
+                        if (!e.shiftKey) setAddMode(false);
+                        return;
+                    }
+                }
+            }
+
+            // Normal click: select cube for detail/edit
+            const hits = ray.intersectObjects(allCubes, false);
+            if (hits.length > 0) {
+                const o = hits[0].object;
+                if (o.userData.filled) {
+                    // Deselect previous
+                    if (selectedCube && selectedCube !== o) {
+                        selectedCube.material.emissiveIntensity = 0.2;
+                        selectedCube.scale.set(1, 1, 1);
+                    }
+                    selectedCube = o;
+                    showDetail(o.userData);
+                    return;
+                }
+            }
+            document.getElementById('detail').classList.remove('open');
+            closeEditPanel();
+        }
+    }, true);
+
+    window.addEventListener('resize', onResize);
+    anim();
+}
+
+function clearAll() {
+    [dGroup, connGroup, floorGroup].forEach(g => {
+        while (g.children.length) {
+            const c = g.children[0];
+            if (c.geometry) c.geometry.dispose();
+            if (c.material) {
+                if (Array.isArray(c.material)) c.material.forEach(m => m.dispose());
+                else c.material.dispose();
+            }
+            g.remove(c);
+        }
+    });
+    labelMeshes.forEach(s => {
+        scene.remove(s);
+        if (s.material && s.material.map) s.material.map.dispose();
+        if (s.material) s.material.dispose();
+        if (s.geometry) s.geometry.dispose();
+    });
+    labelMeshes = [];
+    allCubes = [];
+}
+
+// Create text on a plane, oriented along a specific axis
+// alignAxis: 'z' = text runs along Z (depth), 'x' = text runs along X, 'y' = text runs along Y
+// anchor: 'left' = left edge at position, 'right' = right edge at position, 'center' = centered
+function makeTextPlane(text, fontSize, color, maxW, alignAxis, anchor, logoImg) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const scale = 3;
+    const fs = fontSize * scale;
+    ctx.font = `${fs}px Segoe UI, system-ui, sans-serif`;
+    const m = ctx.measureText(text);
+    const logoSize = logoImg ? fs * 1.2 : 0;
+    const logoGap = logoImg ? fs * 0.3 : 0;
+    const totalTextW = m.width + fs * 0.4 + logoSize + logoGap;
+    const w = Math.min(totalTextW, (maxW || 600) * scale);
+    const h = fs * 1.5;
+    canvas.width = w; canvas.height = h;
+    ctx.font = `${fs}px Segoe UI, system-ui, sans-serif`;
+    ctx.fillStyle = color;
+    ctx.textBaseline = 'middle';
+    let textX = 0;
+    if (logoImg) {
+        try {
+            const sz = fs * 1.0;
+            ctx.drawImage(logoImg, 2, (h - sz) / 2, sz, sz);
+        } catch(e) {}
+        textX = logoSize + logoGap;
+    }
+    ctx.fillText(text, textX, h / 2);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.minFilter = THREE.LinearFilter;
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, side: THREE.DoubleSide });
+    const planeW = w / (scale * 8);
+    const planeH = h / (scale * 8);
+    const geo = new THREE.PlaneGeometry(planeW, planeH);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.raycast = () => {};
+
+    // Orient along the chosen axis
+    if (alignAxis === 'z') {
+        // Text runs along +Z direction. Plane faces up in XZ plane.
+        // Default plane is in XY facing +Z. Rotate -90° around Y to face +X, then text runs along +Z
+        mesh.rotation.set(0, -Math.PI / 2, 0);
+        if (anchor === 'left') geo.translate(planeW / 2, 0, 0);
+        else if (anchor === 'right') geo.translate(-planeW / 2, 0, 0);
+    } else if (alignAxis === 'x') {
+        // Text runs along +X direction. Default plane already faces +Z with text along X.
+        // No rotation needed for the text direction, but we want it visible from above
+        // Keep default (faces +Z)
+        if (anchor === 'left') geo.translate(planeW / 2, 0, 0);
+        else if (anchor === 'right') geo.translate(-planeW / 2, 0, 0);
+    } else if (alignAxis === 'y') {
+        // Text runs along +Y (upward)
+        mesh.rotation.set(0, 0, Math.PI / 2);
+        if (anchor === 'left') geo.translate(planeW / 2, 0, 0);
+        else if (anchor === 'right') geo.translate(-planeW / 2, 0, 0);
+    }
+
+    mesh.userData._planeW = planeW;
+    mesh.userData._planeH = planeH;
+    return mesh;
+}
+
+// Billboarded sprite (for week labels)
+function makeSprite(text, fontSize, color, maxW) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const scale = 3;
+    const fs = fontSize * scale;
+    ctx.font = `${fs}px Segoe UI, system-ui, sans-serif`;
+    const m = ctx.measureText(text);
+    const w = Math.min(m.width + fs * 0.4, (maxW || 600) * scale);
+    const h = fs * 1.5;
+    canvas.width = w; canvas.height = h;
+    ctx.font = `${fs}px Segoe UI, system-ui, sans-serif`;
+    ctx.fillStyle = color;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 0, h / 2);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.minFilter = THREE.LinearFilter;
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(w / (scale * 8), h / (scale * 8), 1);
+    return sprite;
+}
+
+// ============================
+// BUILD VISUALIZATION
+// ============================
+function build(data, keepCamera) {
+    // Save camera state before clearing
+    const savedCamPos = keepCamera && cam ? cam.position.clone() : null;
+    const savedTarget = keepCamera && ctrl ? ctrl.target.clone() : null;
+    clearAll();
+    // Reset edit state
+    selectedCube = null;
+    editingData = null;
+    if (ghostCube) { scene.remove(ghostCube); ghostCube = null; }
+    setAddMode(false);
+    curData = data;
+    const { companies, activities } = data;
+    const evNames = [...new Set(activities.map(a => a.event))];
+    const coNames = [...new Set(companies.map(c => c.name))];
+
+    // Include all EVENTS_META names + any from activities (covers custom events with no activities yet)
+    filters.events = new Set([...evNames, ...EVENTS_META.map(e => e.name)]);
+    filters.regions = new Set([...new Set(companies.map(c => c.region))]);
+    filters.stages = new Set(STAGES.map(s => s.id));
+
+    const allDates = activities.map(a => new Date(a.date)).filter(d => !isNaN(d));
+    const minDate = new Date(Math.min(...allDates));
+    const dayOfWeek = minDate.getDay();
+    const weekStart = new Date(minDate);
+    weekStart.setDate(weekStart.getDate() - ((dayOfWeek + 6) % 7));
+
+    function dateToWeek(dateStr) {
+        const d = new Date(dateStr);
+        const diff = d - weekStart;
+        return Math.floor(diff / (7 * 24 * 60 * 60 * 1000));
+    }
+
+    // nWeeks is global, can be increased with +W button
+    maxWeekIdx = nWeeks - 1;
+    const CS = 4;
+    const GAP = 0.6;
+    CELL = CS + GAP;
+
+    const nE = evNames.length, nC = coNames.length;
+    const totalX = nE * CELL;
+    const totalY = nC * CELL;
+    const totalZ = nWeeks * CELL;
+    dims = { totalX, totalY, totalZ, CELL, nE, nC, nWeeks };
+
+    const coIdx = {}; coNames.forEach((n, i) => coIdx[n] = i);
+    const evIdx = {}; evNames.forEach((n, i) => evIdx[n] = i);
+    const cellMap = {};
+
+    activities.forEach(act => {
+        const ci = coIdx[act.company], ei = evIdx[act.event];
+        const wi = dateToWeek(act.date);
+        if (ci === undefined || ei === undefined || wi < 0 || wi >= nWeeks) return;
+        const si = STAGES.findIndex(s => s.id === act.stage);
+        cellMap[`${ci}|${ei}|${wi}`] = { ...act, si: si >= 0 ? si : 0 };
+    });
+
+    const cubeGeo = new THREE.BoxGeometry(CS, CS, CS);
+    const wireGeo = new THREE.EdgesGeometry(cubeGeo);
+    const emptyWireMat = new THREE.LineBasicMaterial({ color: 0x3a4570, transparent: true, opacity: 0.25 });
+    const emptyFillMat = new THREE.MeshPhongMaterial({ color: 0x1a2040, transparent: true, opacity: 0.08, depthWrite: false });
+
+    for (let ci = 0; ci < nC; ci++) {
+        for (let ei = 0; ei < nE; ei++) {
+            for (let wi = 0; wi < nWeeks; wi++) {
+                const x = ei * CELL + CELL / 2;
+                const y = ci * CELL + CELL / 2;
+                const z = wi * CELL + CELL / 2;
+                const act = cellMap[`${ci}|${ei}|${wi}`];
+                if (act) {
+                    const col = new THREE.Color(SCOLORS[act.si]);
+                    const mat = new THREE.MeshPhongMaterial({
+                        color: col, emissive: col, emissiveIntensity: 0.2,
+                        transparent: true, opacity: 0.82,
+                    });
+                    const cube = new THREE.Mesh(cubeGeo, mat);
+                    cube.position.set(x, y, z);
+                    cube.userData = { ...act, ci, ei, wi, filled: true };
+                    dGroup.add(cube);
+                    allCubes.push(cube);
+                    const edgeMat = new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.5 });
+                    const edge = new THREE.LineSegments(wireGeo, edgeMat);
+                    edge.position.set(x, y, z);
+                    edge.userData = { company: act.company, event: act.event, region: act.region, stage: act.stage };
+                    connGroup.add(edge);
+                } else {
+                    const fill = new THREE.Mesh(cubeGeo, emptyFillMat.clone());
+                    fill.position.set(x, y, z);
+                    fill.userData = { gridCell: true, ci, ei, wi, isEmpty: true };
+                    floorGroup.add(fill);
+                    const wire = new THREE.LineSegments(wireGeo, emptyWireMat);
+                    wire.position.set(x, y, z);
+                    wire.userData = { gridCell: true, ci, ei, wi };
+                    floorGroup.add(wire);
+                }
+            }
+        }
+    }
+
+    // ---- PLANE GRIDS (2D line grids for XY, XZ, YZ) ----
+    const planeMat = new THREE.LineBasicMaterial({ color: 0x2a3560, transparent: true, opacity: 0.35 });
+
+    // XY planes (company × event): one grid at each week boundary
+    for (let wi = 0; wi <= nWeeks; wi++) {
+        const z = wi * CELL;
+        const pts = [];
+        for (let ci = 0; ci <= nC; ci++) { pts.push(new THREE.Vector3(0, ci * CELL, z), new THREE.Vector3(totalX, ci * CELL, z)); }
+        for (let ei = 0; ei <= nE; ei++) { pts.push(new THREE.Vector3(ei * CELL, 0, z), new THREE.Vector3(ei * CELL, totalY, z)); }
+        const geo = new THREE.BufferGeometry().setFromPoints(pts);
+        const line = new THREE.LineSegments(geo, planeMat);
+        line.userData = { planeType: 'xy' };
+        line.visible = false;
+        floorGroup.add(line);
+    }
+    // XZ planes (event × week): one grid at each company boundary
+    for (let ci = 0; ci <= nC; ci++) {
+        const y = ci * CELL;
+        const pts = [];
+        for (let ei = 0; ei <= nE; ei++) { pts.push(new THREE.Vector3(ei * CELL, y, 0), new THREE.Vector3(ei * CELL, y, totalZ)); }
+        for (let wi = 0; wi <= nWeeks; wi++) { pts.push(new THREE.Vector3(0, y, wi * CELL), new THREE.Vector3(totalX, y, wi * CELL)); }
+        const geo = new THREE.BufferGeometry().setFromPoints(pts);
+        const line = new THREE.LineSegments(geo, planeMat);
+        line.userData = { planeType: 'xz' };
+        line.visible = false;
+        floorGroup.add(line);
+    }
+    // YZ planes (company × week): one grid at each event boundary
+    for (let ei = 0; ei <= nE; ei++) {
+        const x = ei * CELL;
+        const pts = [];
+        for (let ci = 0; ci <= nC; ci++) { pts.push(new THREE.Vector3(x, ci * CELL, 0), new THREE.Vector3(x, ci * CELL, totalZ)); }
+        for (let wi = 0; wi <= nWeeks; wi++) { pts.push(new THREE.Vector3(x, 0, wi * CELL), new THREE.Vector3(x, totalY, wi * CELL)); }
+        const geo = new THREE.BufferGeometry().setFromPoints(pts);
+        const line = new THREE.LineSegments(geo, planeMat);
+        line.userData = { planeType: 'yz' };
+        line.visible = false;
+        floorGroup.add(line);
+    }
+
+    // Find actual max week with filled cubes (for blinking)
+    let actualMaxWeek = 0;
+    allCubes.forEach(c => { if (c.userData.wi > actualMaxWeek) actualMaxWeek = c.userData.wi; });
+    maxWeekIdx = actualMaxWeek;
+
+    // ---- AXIS LABELS ----
+
+    // Y axis: Company names (left side) — text runs along Z (into depth)
+    // Text reads left-to-right along +Z, right edge touching the cube grid front face
+    coNames.forEach((name, i) => {
+        const comp = companies.find(c => c.name === name);
+        const txt = name + (comp ? ' [' + comp.region + ']' : '');
+        const logo = logoCache[name] || null;
+        const lbl = makeTextPlane(txt, 12, '#8890b0', 260, 'z', 'left', logo);
+        // Position: x = well left of grid to avoid overlap with grid mesh, y = row center, z = start of depth
+        lbl.position.set(-8, i * CELL + CELL / 2, 0);
+        scene.add(lbl); labelMeshes.push(lbl);
+        lbl.userData.type = 'axisLabel';
+    });
+
+    // X axis: Event names (top) — text runs along Z (into depth)
+    evNames.forEach((name, j) => {
+        const lbl = makeTextPlane(name, 11, '#9070c8', 160, 'z', 'left', null);
+        lbl.position.set(j * CELL + CELL / 2, totalY + 3, 0);
+        scene.add(lbl); labelMeshes.push(lbl);
+        lbl.userData.type = 'axisLabel';
+    });
+
+    // Z axis: Week labels — just week numbers
+    for (let wi = 0; wi < nWeeks; wi++) {
+        const sp = makeSprite(`${wi + 1}w`, 10, '#5a6080', 60);
+        sp.position.set(-2, -2, wi * CELL + CELL / 2);
+        sp.center.set(1, 0.5);
+        scene.add(sp); labelMeshes.push(sp);
+        sp.userData = { type: 'axisLabel' };
+    }
+
+    // Axis titles — now as oriented text planes along their respective axes
+    // "МЕРОПРИЯТИЯ →" runs along X axis (above event names)
+    // But since events are along X and their labels go along Z,
+    // the title should indicate the X direction. Place it along Z like the event labels.
+    const titleEv = makeTextPlane('МЕРОПРИЯТИЯ →', 20, '#7c5cfc', 350, 'x', 'center', null);
+    titleEv.position.set(totalX / 2, totalY + 8, -3);
+    scene.add(titleEv); labelMeshes.push(titleEv);
+    titleEv.userData = { type: 'axisTitle' };
+
+    // "КОМПАНИИ" runs along Y axis (vertical)
+    const titleCo = makeTextPlane('КОМПАНИИ', 20, '#4f8cff', 300, 'y', 'center', null);
+    titleCo.position.set(-16, totalY / 2, -3);
+    scene.add(titleCo); labelMeshes.push(titleCo);
+    titleCo.userData = { type: 'axisTitle' };
+
+    // "ВРЕМЯ (НЕДЕЛИ) →" runs along Z axis (depth)
+    const titleTime = makeTextPlane('ВРЕМЯ (НЕДЕЛИ) →', 20, '#34d399', 400, 'z', 'center', null);
+    titleTime.position.set(-6, -6, totalZ / 2);
+    scene.add(titleTime); labelMeshes.push(titleTime);
+    titleTime.userData = { type: 'axisTitle' };
+
+    // Stats
+    document.getElementById('sC').textContent = nC;
+    document.getElementById('sE').textContent = nE;
+    document.getElementById('sW').textContent = nWeeks;
+    document.getElementById('sA').textContent = allCubes.length;
+
+    // Use EVENTS_META order as canonical, then append any extra events from data
+    const allEvNames = [...EVENTS_META.map(e => e.name), ...evNames.filter(n => !EVENTS_META.some(e => e.name === n))];
+    buildFilters([...new Set(allEvNames)], [...new Set(companies.map(c => c.region))]);
+
+    // Camera
+    const cx = totalX / 2, cy = totalY / 2, cz = totalZ / 2;
+    dims.cx = cx; dims.cy = cy; dims.cz = cz;
+
+    if (savedCamPos && savedTarget) {
+        // Restore camera position after edit/add/delete
+        cam.position.copy(savedCamPos);
+        ctrl.target.copy(savedTarget);
+    } else {
+        // Initial camera — isometric-like view from upper-left-front
+        const diag = Math.sqrt(totalX * totalX + totalY * totalY + totalZ * totalZ);
+        const fovRad = cam.fov * Math.PI / 180;
+        const fitDist = (diag * 0.5) / Math.tan(fovRad / 2);
+        ctrl.target.set(cx, cy, cz);
+        cam.position.set(
+            cx - fitDist * 0.38,
+            cy + fitDist * 0.32,
+            cz - fitDist * 0.58
+        );
+    }
+    ctrl.update();
+
+    setLabelsVisible(labelsVisible);
+    updateGridVisibility();
+}
+
+// ---- TOGGLES ----
+function setLabelsVisible(vis) {
+    labelsVisible = vis;
+    labelMeshes.forEach(sp => {
+        if (sp.userData.type === 'axisLabel') sp.visible = vis;
+    });
+    document.getElementById('bLabels').classList.toggle('active', vis);
+}
+
+function setKeysVisible(vis) {
+    keysVisible = vis;
+    document.getElementById('keys').classList.toggle('hide', !vis);
+    document.getElementById('bKeys').classList.toggle('active', vis);
+}
+
+function setGridVisible(vis) {
+    gridVisible = vis;
+    updateGridVisibility();
+    document.getElementById('bGrid').classList.toggle('active', vis);
+}
+function setGridPlane(plane, vis) {
+    if (plane === 'xy') gridXY = vis;
+    else if (plane === 'xz') gridXZ = vis;
+    else if (plane === 'yz') gridYZ = vis;
+    document.getElementById('bGridXY').classList.toggle('active', gridXY);
+    document.getElementById('bGridXZ').classList.toggle('active', gridXZ);
+    document.getElementById('bGridYZ').classList.toggle('active', gridYZ);
+    updateGridVisibility();
+}
+function updateGridVisibility() {
+    // floorGroup has two kinds: gridCell cubes/wires and gridPlane lines
+    floorGroup.children.forEach(c => {
+        const ud = c.userData;
+        if (ud.gridCell) {
+            // 3D cube grid: visible only when main toggle is on
+            c.visible = gridVisible;
+        } else if (ud.planeType) {
+            // 2D plane grids
+            c.visible = (ud.planeType === 'xy' && gridXY) ||
+                        (ud.planeType === 'xz' && gridXZ) ||
+                        (ud.planeType === 'yz' && gridYZ);
+        }
+    });
+}
+
+function setBlinkEnabled(vis) {
+    blinkEnabled = vis;
+    document.getElementById('bBlink').classList.toggle('active', vis);
+    // Reset opacity on all last-week cubes when disabling
+    if (!vis) {
+        allCubes.forEach(s => {
+            if (s.userData.wi === maxWeekIdx) {
+                s.material.opacity = 0.82;
+                s.material.emissiveIntensity = 0.2;
+            }
+        });
+    }
+    // Rebuild 2D view to add/remove blink animation classes
+    rebuildCurrentView();
+}
+
+// ---- LEGEND & FILTERS ----
+function buildStageFilters() {
+    const sc = document.getElementById('fltS'); sc.innerHTML = '';
+    STAGES.forEach((s, i) => {
+        const l = document.createElement('label');
+        l.innerHTML = `<input type="checkbox" checked data-st="${s.id}"> <span class="leg-dot" style="background:${SCOLORS[i]};display:inline-block"></span> ${s.order}. ${s.name}`;
+        l.querySelector('input').onchange = e => {
+            if (e.target.checked) filters.stages.add(s.id); else filters.stages.delete(s.id);
+            applyF();
+        };
+        sc.appendChild(l);
+    });
+    document.getElementById('fltSAll').onclick = () => {
+        filters.stages = new Set(STAGES.map(s => s.id));
+        sc.querySelectorAll('input').forEach(i => i.checked = true);
+        applyF();
+    };
+    document.getElementById('fltSNone').onclick = () => {
+        filters.stages.clear();
+        sc.querySelectorAll('input').forEach(i => i.checked = false);
+        applyF();
+    };
+}
+function buildFilters(evs, regs) {
+    buildStageFilters();
+
+    const ec = document.getElementById('fltE'); ec.innerHTML = '';
+    evs.forEach(ev => {
+        const l = document.createElement('label');
+        const evColor = EVENT_COLORS[ev] || '#888';
+        l.innerHTML = `<input type="checkbox" checked data-ev="${ev}"> <span class="leg-dot" style="background:${evColor}"></span> ${ev}`;
+        l.querySelector('input').onchange = e => {
+            if (e.target.checked) filters.events.add(ev); else filters.events.delete(ev);
+            applyF();
+        };
+        ec.appendChild(l);
+    });
+    document.getElementById('fltEAll').onclick = () => {
+        filters.events = new Set(evs);
+        ec.querySelectorAll('input').forEach(i => i.checked = true);
+        applyF();
+    };
+    document.getElementById('fltENone').onclick = () => {
+        filters.events.clear();
+        ec.querySelectorAll('input').forEach(i => i.checked = false);
+        applyF();
+    };
+
+    const rc = document.getElementById('fltR'); rc.innerHTML = '';
+    regs.forEach(rg => {
+        const l = document.createElement('label');
+        l.innerHTML = `<input type="checkbox" checked data-rg="${rg}"> ${rg}`;
+        l.querySelector('input').onchange = e => {
+            if (e.target.checked) filters.regions.add(rg); else filters.regions.delete(rg);
+            applyF();
+        };
+        rc.appendChild(l);
+    });
+    document.getElementById('fltRAll').onclick = () => {
+        filters.regions = new Set(regs);
+        rc.querySelectorAll('input').forEach(i => i.checked = true);
+        applyF();
+    };
+    document.getElementById('fltRNone').onclick = () => {
+        filters.regions.clear();
+        rc.querySelectorAll('input').forEach(i => i.checked = false);
+        applyF();
+    };
+}
+function applyF() {
+    allCubes.forEach(s => {
+        const vis = filters.events.has(s.userData.event) && filters.regions.has(s.userData.region) && filters.stages.has(s.userData.stage);
+        s.material.opacity = vis ? 0.82 : 0.04;
+        s.material.emissiveIntensity = vis ? 0.2 : 0.0;
+    });
+    connGroup.children.forEach(c => {
+        if (!c.userData.company) return;
+        const vis = filters.events.has(c.userData.event) && filters.regions.has(c.userData.region) && (c.userData.stage ? filters.stages.has(c.userData.stage) : true);
+        c.material.opacity = vis ? 0.5 : 0.02;
+    });
+    // Rebuild 2D view if active — filters apply there too
+    rebuildCurrentView();
+}
+
+// ---- INTERACTION ----
+function onMove(ev) {
+    const wrap = document.getElementById('canvas-wrap');
+    const r = wrap.getBoundingClientRect();
+    mouse.x = ((ev.clientX - r.left) / r.width) * 2 - 1;
+    mouse.y = -((ev.clientY - r.top) / r.height) * 2 + 1;
+    ray.setFromCamera(mouse, cam);
+    const tip = document.getElementById('tip');
+
+    if (hovered && hovered !== selectedCube) {
+        hovered.material.emissiveIntensity = 0.2;
+        hovered.scale.set(1, 1, 1);
+        hovered = null;
+    }
+
+    // Ghost cube for add mode + tooltip showing company/event
+    const ghostTip = document.getElementById('ghostTip');
+    if (addMode && ghostCube) {
+        const emptyHits = ray.intersectObjects(floorGroup.children, false);
+        if (emptyHits.length > 0 && emptyHits[0].object.userData.gridCell) {
+            ghostCube.visible = true;
+            ghostCube.position.copy(emptyHits[0].object.position);
+            // Show tooltip with company + event info
+            const ud = emptyHits[0].object.userData;
+            if (curData && ud.ci !== undefined && ud.ei !== undefined) {
+                const coNames = [...new Set(curData.companies.map(c => c.name))];
+                const evNames = [...new Set(curData.activities.map(a => a.event))];
+                const company = coNames[ud.ci] || '?';
+                const event = evNames[ud.ei] || '?';
+                ghostTip.innerHTML = `<b>${company}</b><br>${event} · нед.${(ud.wi||0)+1}`;
+                ghostTip.style.display = 'block';
+                ghostTip.style.left = (ev.clientX + 16) + 'px';
+                ghostTip.style.top = (ev.clientY - 40) + 'px';
+                // Ensure stays on screen
+                const gr = ghostTip.getBoundingClientRect();
+                if (gr.right > window.innerWidth - 8) ghostTip.style.left = (ev.clientX - gr.width - 16) + 'px';
+                if (gr.top < 50) ghostTip.style.top = (ev.clientY + 16) + 'px';
+            }
+        } else {
+            ghostCube.visible = false;
+            ghostTip.style.display = 'none';
+        }
+    } else {
+        ghostTip.style.display = 'none';
+    }
+
+    const hits = ray.intersectObjects(allCubes, false);
+
+    if (hits.length > 0) {
+        const o = hits[0].object;
+        if (o.material.opacity > 0.1 && o.userData.filled) {
+            hovered = o;
+            if (o !== selectedCube) {
+                o.material.emissiveIntensity = 0.6;
+                o.scale.set(1.12, 1.12, 1.12);
+            }
+            const d = o.userData;
+            tip.style.display = 'block';
+            tip.style.left = (ev.clientX + 14) + 'px';
+            tip.style.top = (ev.clientY - 8) + 'px';
+            const tr = tip.getBoundingClientRect();
+            if (tr.right > window.innerWidth - 8) tip.style.left = (ev.clientX - tr.width - 14) + 'px';
+            if (tr.bottom > window.innerHeight - 8) tip.style.top = (ev.clientY - tr.height - 8) + 'px';
+            tip.innerHTML = `
+                <div class="t-name">${d.company}</div>
+                <div class="t-dim">${d.region} · ${d.contact}</div>
+                <div class="t-dim">${d.position}</div>
+                <div style="margin-top:6px"><b>Мероприятие:</b> ${d.event}<br><b>Дата:</b> ${d.date}<br><b>Неделя:</b> ${(d.wi || 0) + 1}w</div>
+                <div class="t-badge" style="background:${SCOLORS[d.si]}22;color:${SCOLORS[d.si]}">${d.stageName}</div>
+            `;
+            rend.domElement.style.cursor = addMode ? 'cell' : 'pointer';
+        }
+    } else {
+        tip.style.display = 'none';
+        rend.domElement.style.cursor = addMode ? 'cell' : 'grab';
+    }
+}
+
+function showDetail(d) {
+    const p = document.getElementById('detail');
+    const c = document.getElementById('detC');
+    const chain = curData.activities.filter(a => a.company === d.company && a.event === d.event).sort((a, b) => a.stageOrder - b.stageOrder);
+    const all = curData.activities.filter(a => a.company === d.company).sort((a, b) => new Date(a.date) - new Date(b.date));
+    const ci = curData.companies.find(co => co.name === d.company) || d;
+    c.innerHTML = `
+        <h2>${d.company}</h2>
+        <div class="dmeta">${ci.region}<br>${ci.contact}<br>${ci.pos || ci.position || ''}</div>
+        <div style="margin-bottom:10px">
+            <button class="btn" style="font-size:11px;padding:3px 10px;margin-right:6px" onclick="openEditForSelected()">✏ Редактировать</button>
+            <button class="btn" style="font-size:11px;padding:3px 10px;color:#f87171;border-color:#6b2030" onclick="deleteSelected()">✕ Удалить</button>
+        </div>
+        <h3 style="font-size:12px;color:#4f8cff;margin-bottom:10px">${d.event} — Прогресс</h3>
+        <div class="tl">${chain.map(a => {
+            const si = STAGES.findIndex(s => s.id === a.stage);
+            return `<div class="tl-i done"><div class="t" style="color:${SCOLORS[si]}">${a.stageName}</div><div class="d">${a.date}</div></div>`;
+        }).join('')}</div>
+        <h3 style="font-size:12px;color:#7c5cfc;margin:16px 0 10px">Все активности</h3>
+        <div class="tl">${all.map(a => {
+            const si = STAGES.findIndex(s => s.id === a.stage);
+            return `<div class="tl-i done"><div class="e">${a.event}</div><div class="t" style="color:${SCOLORS[si >= 0 ? si : 0]}">${a.stageName}</div><div class="d">${a.date}</div></div>`;
+        }).join('')}</div>
+    `;
+    p.classList.add('open');
+}
+function openEditForSelected() {
+    if (selectedCube) openEditPanel(selectedCube, false);
+    document.getElementById('detail').classList.remove('open');
+}
+function deleteSelected() {
+    if (selectedCube && curData) {
+        const d = selectedCube.userData;
+        customConfirm(
+            `${d.company} — ${d.stageName} (${d.event}, нед.${(d.wi||0)+1})`,
+            'Удалить активность?'
+        ).then(ok => {
+            if (ok) {
+                const idx = curData.activities.findIndex(a =>
+                    a.company === d.company && a.event === d.event && a.stage === d.stage && a.date === d.date
+                );
+                if (idx >= 0) { curData.activities.splice(idx, 1); markDirty(); closeEditPanel(); build(curData, true); rebuildCurrentView(); }
+            }
+        });
+    }
+}
+
+function onResize() {
+    const w = document.getElementById('canvas-wrap');
+    cam.aspect = w.clientWidth / w.clientHeight;
+    cam.updateProjectionMatrix();
+    rend.setSize(w.clientWidth, w.clientHeight);
+}
+
+function anim() {
+    requestAnimationFrame(anim);
+    processKeys();
+    ctrl.update();
+    const t = Date.now() * 0.001;
+    allCubes.forEach((s, i) => {
+        if (s === hovered || s.material.opacity < 0.1) return;
+        if (blinkEnabled && s.userData.wi === maxWeekIdx) {
+            // Blink: pulsate between bright and dim
+            const blink = (Math.sin(t * 5) + 1) * 0.5; // 0..1 oscillation ~2.5Hz
+            s.material.emissiveIntensity = 0.3 + blink * 0.7;
+            s.material.opacity = 0.5 + blink * 0.5;
+        } else {
+            s.material.emissiveIntensity = 0.2 + Math.sin(t * 1.2 + i * 0.15) * 0.05;
+        }
+    });
+    rend.render(scene, cam);
+}
+
+// ---- UI WIRING ----
+async function loadDemo() {
+    document.getElementById('upload').classList.add('gone');
+    // Wait for logos to finish loading (up to 5s)
+    if (!logosReady) await preloadLogos();
+    build(genDemo());
+    markDirty(); // demo data is unsaved
+    // Auto-switch to 2D view by default
+    if (currentView === '3d') switchView('2d');
+}
+document.getElementById('bDemoU').onclick = loadDemo;
+document.getElementById('bDemo').onclick = loadDemo;
+document.getElementById('bFile').onclick = () => document.getElementById('finp').click();
+document.getElementById('bLoad').onclick = () => document.getElementById('finp').click();
+document.getElementById('finp').onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try {
+        const d = await parseExcel(f);
+        document.getElementById('upload').classList.add('gone');
+        if (!logosReady) await preloadLogos();
+        build(d);
+        // Auto-switch to 2D view by default
+        if (currentView === '3d') switchView('2d');
+    } catch (err) { alert('Ошибка: ' + err.message); }
+};
+const uc = document.getElementById('ucard');
+['dragover', 'dragenter'].forEach(e => uc.addEventListener(e, ev => { ev.preventDefault(); uc.classList.add('over'); }));
+['dragleave', 'drop'].forEach(e => uc.addEventListener(e, () => uc.classList.remove('over')));
+uc.addEventListener('drop', async e => {
+    e.preventDefault();
+    const f = e.dataTransfer.files[0]; if (!f) return;
+    try {
+        const d = await parseExcel(f);
+        document.getElementById('upload').classList.add('gone');
+        if (!logosReady) await preloadLogos();
+        build(d);
+        if (currentView === '3d') switchView('2d');
+    } catch (err) { alert('Ошибка: ' + err.message); }
+});
+
+document.getElementById('bReset').onclick = () => {
+    if (!curData) return;
+    const diag = Math.sqrt(dims.totalX**2 + dims.totalY**2 + dims.totalZ**2);
+    const fovRad = cam.fov * Math.PI / 180;
+    const fitDist = (diag * 0.5) / Math.tan(fovRad / 2);
+    ctrl.target.set(dims.cx, dims.cy, dims.cz);
+    cam.position.set(dims.cx - fitDist * 0.38, dims.cy + fitDist * 0.32, dims.cz - fitDist * 0.58);
+    ctrl.update();
+    rend.domElement.focus();
+};
+
+document.getElementById('bLabels').onclick = () => setLabelsVisible(!labelsVisible);
+document.getElementById('bGrid').onclick = () => setGridVisible(!gridVisible);
+document.getElementById('bGridXY').onclick = () => setGridPlane('xy', !gridXY);
+document.getElementById('bGridXZ').onclick = () => setGridPlane('xz', !gridXZ);
+document.getElementById('bGridYZ').onclick = () => setGridPlane('yz', !gridYZ);
+document.getElementById('bKeys').onclick = () => setKeysVisible(!keysVisible);
+document.getElementById('bBlink').onclick = () => setBlinkEnabled(!blinkEnabled);
+
+document.getElementById('bAddWeek').onclick = () => {
+    if (!curData) return;
+    nWeeks++;
+    markDirty();
+    build(curData, true);
+    rebuildCurrentView();
+    document.getElementById('sW').textContent = nWeeks;
+};
+
+document.getElementById('bSave').onclick = () => { if (curData) saveToStorage(); };
+
+const pan = document.getElementById('panel');
+function togglePanel() {
+    pan.classList.toggle('hide');
+    document.getElementById('canvas-wrap').classList.toggle('full');
+    document.getElementById('view2d').classList.toggle('full');
+    document.getElementById('viewTimeline').classList.toggle('full');
+    document.getElementById('viewEvents').classList.toggle('full');
+    document.getElementById('viewCompanies').classList.toggle('full');
+    onResize();
+}
+document.getElementById('bPanel').onclick = togglePanel;
+document.getElementById('clsPanel').onclick = () => { if (!pan.classList.contains('hide')) togglePanel(); };
+document.getElementById('clsDet').onclick = () => document.getElementById('detail').classList.remove('open');
+
+// Refocus canvas after any button click so keyboard keeps working
+document.querySelectorAll('.btn, .btn-icon, .panel-close, .cls, .flt-btns button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        setTimeout(() => {
+            if (rend && rend.domElement) rend.domElement.focus();
+            else document.body.focus();
+        }, 50);
+    });
+});
+
+// ============================
+// KEYBOARD CONTROLS
+// ============================
+const KEY_STATE = {};
+const ROT_SPEED = 0.02;
+const PAN_SPEED = 1.5;
+const ZOOM_SPEED = 2.0;
+
+window.addEventListener('keydown', e => {
+    // Ctrl+S to save
+    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS') {
+        e.preventDefault();
+        if (curData) saveToStorage();
+        return;
+    }
+    // Escape works even from inputs (to close modals)
+    if (e.code === 'Escape') {
+        if (document.getElementById('newsOverlay').classList.contains('show')) { closeNewsFrame(); return; }
+        document.getElementById('detail').classList.remove('open'); document.getElementById('tip').style.display = 'none'; closeFormModal(); return;
+    }
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    KEY_STATE[e.code] = true;
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space',
+        'Equal', 'Minus', 'NumpadAdd', 'NumpadSubtract'].includes(e.code)) {
+        e.preventDefault();
+    }
+    if (e.code === 'KeyR' || e.code === 'Home') document.getElementById('bReset').click();
+    if (e.code === 'KeyP') document.getElementById('bPanel').click();
+    if (e.code === 'KeyL') document.getElementById('bLabels').click();
+    if (e.code === 'KeyG') document.getElementById('bGrid').click();
+    if (e.code === 'KeyH') document.getElementById('bKeys').click();
+    if (e.code === 'KeyB') document.getElementById('bBlink').click();
+    if (e.code === 'KeyN') document.getElementById('bAddMode').click();
+    if (e.code === 'KeyT') { if (currentView === '2d') switchView('3d'); else switchView('2d'); }
+    if (e.code === 'KeyY') { if (currentView === 'timeline') switchView('3d'); else switchView('timeline'); }
+    if ((e.code === 'Delete' || e.code === 'Backspace') && selectedCube && curData) {
+        const d = selectedCube.userData;
+        customConfirm(
+            `${d.company} — ${d.stageName} (${d.event}, нед.${(d.wi||0)+1})`,
+            'Удалить активность?'
+        ).then(ok => {
+            if (ok) {
+                const idx = curData.activities.findIndex(a =>
+                    a.company === d.company && a.event === d.event && a.stage === d.stage && a.date === d.date
+                );
+                if (idx >= 0) { curData.activities.splice(idx, 1); markDirty(); closeEditPanel(); build(curData, true); rebuildCurrentView(); }
+            }
+        });
+    }
+    if (e.code === 'KeyF') { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
+    if (e.code === 'Digit1') setCamPreset('front');
+    if (e.code === 'Digit2') setCamPreset('top');
+    if (e.code === 'Digit3') setCamPreset('right');
+    if (e.code === 'Digit4') setCamPreset('perspective');
+    if (e.code === 'Digit5') setCamPreset('left');
+    if (e.code === 'Digit6') setCamPreset('back');
+});
+window.addEventListener('keyup', e => { KEY_STATE[e.code] = false; });
+// Clear all keys on window blur to prevent stuck keys
+window.addEventListener('blur', () => { Object.keys(KEY_STATE).forEach(k => KEY_STATE[k] = false); });
+
+function setCamPreset(view) {
+    if (!curData) return;
+    const cx = dims.cx, cy = dims.cy, cz = dims.cz;
+    const d = Math.max(dims.totalX, dims.totalY, dims.totalZ) * 0.9;
+    ctrl.target.set(cx, cy, cz);
+    switch (view) {
+        case 'front': cam.position.set(cx, cy, cz - d * 1.2); break;
+        case 'top': cam.position.set(cx, cy + d * 1.2, cz); break;
+        case 'right': cam.position.set(cx + d * 1.2, cy, cz); break;
+        case 'left': cam.position.set(cx - d * 1.2, cy, cz); break;
+        case 'back': cam.position.set(cx, cy, cz + d * 1.2); break;
+        case 'perspective': {
+            const diag = Math.sqrt(dims.totalX**2 + dims.totalY**2 + dims.totalZ**2);
+            const fovRad = cam.fov * Math.PI / 180;
+            const fitDist = (diag * 0.5) / Math.tan(fovRad / 2);
+            cam.position.set(cx - fitDist * 0.38, cy + fitDist * 0.32, cz - fitDist * 0.58);
+            break;
+        }
+    }
+    ctrl.update();
+}
+
+function processKeys() {
+    if (!curData) return;
+    const forward = new THREE.Vector3();
+    cam.getWorldDirection(forward);
+    forward.y = 0; forward.normalize();
+    const right = new THREE.Vector3();
+    right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+    const up = new THREE.Vector3(0, 1, 0);
+
+    if (KEY_STATE['ArrowLeft']) { const o = cam.position.clone().sub(ctrl.target); o.applyAxisAngle(up, ROT_SPEED); cam.position.copy(ctrl.target).add(o); }
+    if (KEY_STATE['ArrowRight']) { const o = cam.position.clone().sub(ctrl.target); o.applyAxisAngle(up, -ROT_SPEED); cam.position.copy(ctrl.target).add(o); }
+    if (KEY_STATE['ArrowUp']) { const o = cam.position.clone().sub(ctrl.target); o.applyAxisAngle(right, ROT_SPEED); cam.position.copy(ctrl.target).add(o); }
+    if (KEY_STATE['ArrowDown']) { const o = cam.position.clone().sub(ctrl.target); o.applyAxisAngle(right, -ROT_SPEED); cam.position.copy(ctrl.target).add(o); }
+
+    if (KEY_STATE['KeyW']) { const v = forward.clone().multiplyScalar(PAN_SPEED); ctrl.target.add(v); cam.position.add(v); }
+    if (KEY_STATE['KeyS']) { const v = forward.clone().multiplyScalar(-PAN_SPEED); ctrl.target.add(v); cam.position.add(v); }
+    if (KEY_STATE['KeyA']) { const v = right.clone().multiplyScalar(-PAN_SPEED); ctrl.target.add(v); cam.position.add(v); }
+    if (KEY_STATE['KeyD']) { const v = right.clone().multiplyScalar(PAN_SPEED); ctrl.target.add(v); cam.position.add(v); }
+    if (KEY_STATE['KeyQ'] || KEY_STATE['Space']) { const v = up.clone().multiplyScalar(PAN_SPEED); ctrl.target.add(v); cam.position.add(v); }
+    if (KEY_STATE['KeyE']) { const v = up.clone().multiplyScalar(-PAN_SPEED); ctrl.target.add(v); cam.position.add(v); }
+
+    if (KEY_STATE['Equal'] || KEY_STATE['NumpadAdd'] || KEY_STATE['KeyZ']) { cam.position.add(ctrl.target.clone().sub(cam.position).normalize().multiplyScalar(ZOOM_SPEED)); }
+    if (KEY_STATE['Minus'] || KEY_STATE['NumpadSubtract'] || KEY_STATE['KeyX']) { cam.position.add(ctrl.target.clone().sub(cam.position).normalize().multiplyScalar(-ZOOM_SPEED)); }
+}
+
+// ============================
+// EDIT MODE
+// ============================
+const editStageEl = document.getElementById('editStage');
+// Stage dropdown is populated dynamically in openEditPanel()
+
+function setAddMode(on) {
+    addMode = on;
+    document.getElementById('bAddMode').classList.toggle('active', on);
+    const ind = document.getElementById('modeInd');
+    if (on) {
+        ind.textContent = 'Режим добавления — кликните на пустую ячейку · Shift+Click тоже работает';
+        ind.classList.add('show');
+        rend.domElement.style.cursor = 'cell';
+        // Make empty cubes visible and raycastable in add mode
+        floorGroup.children.forEach(c => {
+            if (c.userData.isEmpty) {
+                c.visible = true;
+                c.material.opacity = 0.04;
+            }
+        });
+        // Create ghost cube
+        if (!ghostCube) {
+            const CS = CELL - 0.6;
+            const geo = new THREE.BoxGeometry(CS, CS, CS);
+            const mat = new THREE.MeshPhongMaterial({
+                color: 0x4f8cff, emissive: new THREE.Color(0x4f8cff),
+                emissiveIntensity: 0.4, transparent: true, opacity: 0.3, depthWrite: false,
+            });
+            ghostCube = new THREE.Mesh(geo, mat);
+            ghostCube.visible = false;
+            ghostCube.raycast = () => {};
+            scene.add(ghostCube);
+        }
+    } else {
+        ind.classList.remove('show');
+        rend.domElement.style.cursor = 'grab';
+        if (ghostCube) ghostCube.visible = false;
+        // Restore empty cube visibility
+        updateGridVisibility();
+    }
+}
+
+function openEditPanel(cubeOrData, isNew) {
+    const ep = document.getElementById('editPanel');
+    const info = document.getElementById('editInfo');
+    const d = cubeOrData.userData || cubeOrData;
+    editingData = { ...d, isNew: !!isNew, sourceCube: cubeOrData.userData ? cubeOrData : null };
+
+    document.getElementById('editTitle').textContent = isNew ? '+ Новый этап' : 'Редактирование';
+    info.innerHTML = `<b>Компания:</b> ${d.company || '—'}<br><b>Мероприятие:</b> ${d.event || '—'}<br><b>Неделя:</b> ${(d.wi || 0) + 1}w`;
+
+    // Rebuild stage dropdown based on context
+    editStageEl.innerHTML = '';
+    if (isNew && curData && d.company) {
+        // Find the highest stage this company has already reached
+        const companyActs = curData.activities.filter(a => a.company === d.company);
+        let maxOrder = 0;
+        companyActs.forEach(a => {
+            const si = STAGES.findIndex(s => s.id === a.stage);
+            if (si >= 0 && STAGES[si].order > maxOrder) maxOrder = STAGES[si].order;
+        });
+        // Only show stages AFTER the last reached one
+        STAGES.forEach((s, i) => {
+            if (s.order > maxOrder) {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = `${s.order}. ${s.name}`;
+                opt.style.color = SCOLORS[i];
+                editStageEl.appendChild(opt);
+            }
+        });
+        // If no stages available (all 11 reached), show message
+        if (editStageEl.options.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '— Все этапы пройдены —';
+            opt.disabled = true;
+            editStageEl.appendChild(opt);
+        }
+        // Pre-select the first available (next stage)
+        editStageEl.value = editStageEl.options[0]?.value || '';
+        // Show current progress info
+        const lastStage = maxOrder > 0 ? STAGES.find(s => s.order === maxOrder) : null;
+        if (lastStage) {
+            info.innerHTML += `<br><b>Последний этап:</b> <span style="color:${SCOLORS[STAGES.indexOf(lastStage)]}">${lastStage.name}</span>`;
+        }
+    } else {
+        // Editing existing — show all stages
+        STAGES.forEach((s, i) => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = `${s.order}. ${s.name}`;
+            opt.style.color = SCOLORS[i];
+            editStageEl.appendChild(opt);
+        });
+        editStageEl.value = d.stage || STAGES[0].id;
+    }
+
+    document.getElementById('editDate').value = d.date || new Date().toISOString().slice(0, 10);
+    document.getElementById('editDel').style.display = isNew ? 'none' : '';
+
+    ep.classList.add('open');
+    // Close detail panel if open
+    document.getElementById('detail').classList.remove('open');
+}
+
+function closeEditPanel() {
+    document.getElementById('editPanel').classList.remove('open');
+    if (selectedCube) {
+        selectedCube.material.emissiveIntensity = 0.2;
+        selectedCube.scale.set(1, 1, 1);
+        selectedCube = null;
+    }
+    editingData = null;
+}
+
+document.getElementById('clsEdit').onclick = closeEditPanel;
+document.getElementById('editCancel').onclick = closeEditPanel;
+
+document.getElementById('editSave').onclick = () => {
+    if (!editingData || !curData) return;
+    const stageId = editStageEl.value;
+    if (!stageId) return; // no valid stage selected (all stages reached)
+    const si = STAGES.findIndex(s => s.id === stageId);
+    if (si < 0) return;
+    const stage = STAGES[si];
+    const dateVal = document.getElementById('editDate').value;
+
+    if (editingData.isNew) {
+        // ADD new activity
+        const newAct = {
+            company: editingData.company,
+            region: editingData.region || '',
+            contact: editingData.contact || '',
+            position: editingData.position || '',
+            event: editingData.event,
+            stage: stage.id,
+            stageName: stage.name,
+            stageOrder: stage.order,
+            date: dateVal,
+        };
+        curData.activities.push(newAct);
+        markDirty();
+    } else {
+        // EDIT existing: update in activities array
+        const idx = curData.activities.findIndex(a =>
+            a.company === editingData.company && a.event === editingData.event &&
+            a.stage === editingData.stage && a.date === editingData.date
+        );
+        if (idx >= 0) {
+            curData.activities[idx].stage = stage.id;
+            curData.activities[idx].stageName = stage.name;
+            curData.activities[idx].stageOrder = stage.order;
+            curData.activities[idx].date = dateVal;
+            markDirty();
+        }
+    }
+    closeEditPanel();
+    build(curData, true); // Rebuild visualization
+    rebuildCurrentView();
+};
+
+document.getElementById('editDel').onclick = () => {
+    if (!editingData || !curData) return;
+    const ed = editingData;
+    customConfirm(
+        `${ed.company} — ${ed.event}`,
+        'Удалить активность?'
+    ).then(ok => {
+        if (ok) {
+            const idx = curData.activities.findIndex(a =>
+                a.company === ed.company && a.event === ed.event &&
+                a.stage === ed.stage && a.date === ed.date
+            );
+            if (idx >= 0) {
+                curData.activities.splice(idx, 1);
+                markDirty();
+            }
+            closeEditPanel();
+            build(curData, true);
+            rebuildCurrentView();
+        }
+    });
+};
+
+// Context menu
+function showCtxMenu(x, y, cube) {
+    const menu = document.getElementById('ctxMenu');
+    menu.style.display = 'block';
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+    // Adjust if off screen
+    const r = menu.getBoundingClientRect();
+    if (r.right > window.innerWidth - 5) menu.style.left = (x - r.width) + 'px';
+    if (r.bottom > window.innerHeight - 5) menu.style.top = (y - r.height) + 'px';
+    menu._cube = cube;
+}
+function hideCtxMenu() { document.getElementById('ctxMenu').style.display = 'none'; }
+
+document.getElementById('ctxEdit').onclick = () => {
+    const cube = document.getElementById('ctxMenu')._cube;
+    if (cube) openEditPanel(cube, false);
+    hideCtxMenu();
+};
+document.getElementById('ctxDel').onclick = () => {
+    const cube = document.getElementById('ctxMenu')._cube;
+    hideCtxMenu();
+    if (cube && curData) {
+        const d = cube.userData;
+        customConfirm(
+            `${d.company} — ${d.stageName} (${d.event}, нед.${(d.wi||0)+1})`,
+            'Удалить активность?'
+        ).then(ok => {
+            if (ok) {
+                const idx = curData.activities.findIndex(a =>
+                    a.company === d.company && a.event === d.event &&
+                    a.stage === d.stage && a.date === d.date
+                );
+                if (idx >= 0) {
+                    curData.activities.splice(idx, 1);
+                    markDirty();
+                    build(curData, true);
+                    rebuildCurrentView();
+                }
+            }
+        });
+    }
+};
+document.getElementById('ctxAdd').onclick = () => {
+    hideCtxMenu();
+    setAddMode(true);
+};
+
+document.addEventListener('click', e => {
+    if (!document.getElementById('ctxMenu').contains(e.target)) hideCtxMenu();
+});
+
+document.getElementById('bAddMode').onclick = () => setAddMode(!addMode);
+
+// ============================
+// VIEW SWITCHING: 3D / 2D / Timeline
+// ============================
+let currentView = '3d'; // '3d', '2d', 'timeline'
+
+function switchView(view) {
+    currentView = view;
+    const v2 = document.getElementById('view2d');
+    const vt = document.getElementById('viewTimeline');
+    const ve = document.getElementById('viewEvents');
+    const vc = document.getElementById('viewCompanies');
+    const cw = document.getElementById('canvas-wrap');
+    const isPanelFull = cw.classList.contains('full');
+
+    // Hide all views
+    v2.classList.remove('active');
+    vt.classList.remove('active');
+    ve.classList.remove('active');
+    vc.classList.remove('active');
+    cw.style.display = 'none';
+
+    // Show/hide nav buttons — all except current view
+    const navMap = {bTo3D:'3d', bTo2D:'2d', bToTimeline:'timeline', bToEvents:'events', bToCompanies:'companies'};
+    Object.entries(navMap).forEach(([id, v]) => {
+        document.getElementById(id).style.display = (v === view) ? 'none' : 'inline-block';
+    });
+
+    // Toolbar visibility by view type
+    const isViz = (view === '3d' || view === '2d' || view === 'timeline');
+    const is3D  = (view === '3d');
+
+    // tb-3d: only 3D
+    document.querySelectorAll('#topbar .tb-3d').forEach(el => {
+        el.style.display = is3D ? '' : 'none';
+    });
+    // tb-viz: 3D, 2D, Timeline
+    document.querySelectorAll('#topbar .tb-viz').forEach(el => {
+        el.style.display = isViz ? '' : 'none';
+    });
+
+    // Panel & keys: hide for non-viz views, restore for viz views
+    const pan = document.getElementById('panel');
+    const keys = document.getElementById('keys');
+    if (!isViz) {
+        pan.style.display = 'none';
+        if (keys) keys.style.display = 'none';
+    } else {
+        pan.style.display = '';
+        if (keys) keys.style.display = '';
+    }
+
+    const overlay = (el) => {
+        if (!isViz || cw.classList.contains('full')) el.classList.add('full');
+        else el.classList.remove('full');
+    };
+
+    if (view === '2d') {
+        v2.classList.add('active'); overlay(v2); build2D();
+    } else if (view === 'timeline') {
+        vt.classList.add('active'); overlay(vt); buildTimeline();
+    } else if (view === 'events') {
+        ve.classList.add('active'); overlay(ve); buildEventsView();
+    } else if (view === 'companies') {
+        vc.classList.add('active'); overlay(vc); buildCompaniesView();
+    } else {
+        // 3D
+        cw.style.display = '';
+        onResize();
+    }
+}
+
+// Getter for backward compat
+Object.defineProperty(window, 'is2D', {
+    get() { return currentView !== '3d'; },
+});
+// Rebuild the current overlay view
+function rebuildCurrentView() {
+    if (currentView === '2d') setTimeout(build2D, 50);
+    else if (currentView === 'timeline') setTimeout(buildTimeline, 50);
+    else if (currentView === 'events') setTimeout(buildEventsView, 50);
+    else if (currentView === 'companies') setTimeout(buildCompaniesView, 50);
+}
+
+document.getElementById('bTo3D').onclick = () => switchView('3d');
+document.getElementById('bTo2D').onclick = () => switchView('2d');
+document.getElementById('bToTimeline').onclick = () => switchView('timeline');
+document.getElementById('bToEvents').onclick = () => switchView('events');
+document.getElementById('bToCompanies').onclick = () => switchView('companies');
+
+// ============================
+// ADD EVENT / ADD COMPANY MODALS
+// ============================
+const PALETTE = [
+    '#6366f1','#f43f5e','#8b5cf6','#f97316','#0ea5e9','#10b981',
+    '#e11d48','#64748b','#a855f7','#06b6d4','#eab308','#ec4899',
+    '#14b8a6','#f472b6','#84cc16','#fb923c',
+];
+
+function showFormModal(html) {
+    const m = document.getElementById('formModal');
+    document.getElementById('fmBox').innerHTML = html;
+    m.classList.add('show');
+    // Close on overlay click
+    m.onclick = e => { if (e.target === m) closeFormModal(); };
+}
+function closeFormModal() {
+    document.getElementById('formModal').classList.remove('show');
+}
+
+function openAddEventModal() {
+    let weekOpts = '';
+    for (let w = 1; w <= nWeeks; w++) weekOpts += `<option value="${w-1}">${w}w</option>`;
+
+    // Find colors already used
+    const usedColors = new Set(EVENTS_META.map(e => e.color));
+    let palHtml = '';
+    PALETTE.forEach(c => {
+        const used = usedColors.has(c) ? ' style="opacity:0.3"' : '';
+        palHtml += `<div class="color-sw" data-color="${c}" style="background:${c}"${used}></div>`;
+    });
+
+    showFormModal(`
+        <h2>+ Новое мероприятие</h2>
+        <label>Название</label>
+        <input type="text" id="fmEvName" placeholder="Например: Деловой ужин">
+        <label>Неделя начала</label>
+        <select id="fmEvWeek">${weekOpts}</select>
+        <label>Продолжительность</label>
+        <div class="fm-row">
+            <div><input type="number" id="fmEvDur" value="1" min="1" max="99"></div>
+            <div><select id="fmEvDurUnit">
+                <option value="d">дней</option>
+                <option value="w" selected>недель</option>
+                <option value="m">месяцев</option>
+            </select></div>
+        </div>
+        <label>Цвет</label>
+        <div class="color-pal" id="fmPalette">${palHtml}</div>
+        <div class="fm-actions">
+            <button class="fm-cancel" id="fmCancel">Отмена</button>
+            <button class="fm-ok" id="fmOk">Добавить</button>
+        </div>
+    `);
+
+    // Color selection
+    let selColor = PALETTE.find(c => !usedColors.has(c)) || PALETTE[0];
+    const palEl = document.getElementById('fmPalette');
+    function markSel() {
+        palEl.querySelectorAll('.color-sw').forEach(s => s.classList.toggle('sel', s.dataset.color === selColor));
+    }
+    markSel();
+    palEl.onclick = e => {
+        const sw = e.target.closest('.color-sw');
+        if (sw) { selColor = sw.dataset.color; markSel(); }
+    };
+
+    document.getElementById('fmCancel').onclick = closeFormModal;
+    document.getElementById('fmOk').onclick = () => {
+        const name = document.getElementById('fmEvName').value.trim();
+        if (!name) { document.getElementById('fmEvName').style.borderColor = '#f43f5e'; return; }
+        // Check duplicate
+        if (EVENTS_META.some(e => e.name === name)) {
+            document.getElementById('fmEvName').style.borderColor = '#f43f5e';
+            document.getElementById('fmEvName').value = '';
+            document.getElementById('fmEvName').placeholder = 'Такое мероприятие уже есть!';
+            return;
+        }
+        const weekStart = parseInt(document.getElementById('fmEvWeek').value);
+        const durVal = parseInt(document.getElementById('fmEvDur').value) || 1;
+        const durUnit = document.getElementById('fmEvDurUnit').value;
+        // Convert duration to weeks
+        let durationWeeks;
+        if (durUnit === 'd') durationWeeks = Math.max(1, Math.ceil(durVal / 7));
+        else if (durUnit === 'm') durationWeeks = durVal * 4;
+        else durationWeeks = durVal;
+
+        EVENTS_META.push({ name, weekStart, duration: durationWeeks, color: selColor });
+        rebuildEventsDerived();
+        if (curData) {
+            filters.events.add(name);
+            markDirty();
+            build(curData, true);
+            rebuildCurrentView();
+        }
+        closeFormModal();
+    };
+}
+
+function openAddCompanyModal() {
+    showFormModal(`
+        <h2>+ Новая компания</h2>
+        <label>Название компании</label>
+        <input type="text" id="fmCoName" placeholder="Название">
+        <label>Регион</label>
+        <input type="text" id="fmCoRegion" placeholder="Например: Москва">
+        <label>Контактное лицо</label>
+        <input type="text" id="fmCoContact" placeholder="ФИО">
+        <label>Должность</label>
+        <input type="text" id="fmCoPos" placeholder="Должность">
+        <div class="fm-actions">
+            <button class="fm-cancel" id="fmCancel">Отмена</button>
+            <button class="fm-ok" id="fmOk">Добавить</button>
+        </div>
+    `);
+
+    document.getElementById('fmCancel').onclick = closeFormModal;
+    document.getElementById('fmOk').onclick = () => {
+        const name = document.getElementById('fmCoName').value.trim();
+        if (!name) { document.getElementById('fmCoName').style.borderColor = '#f43f5e'; return; }
+        if (!curData) return;
+        // Check duplicate
+        if (curData.companies.some(c => c.name === name)) {
+            document.getElementById('fmCoName').style.borderColor = '#f43f5e';
+            document.getElementById('fmCoName').value = '';
+            document.getElementById('fmCoName').placeholder = 'Такая компания уже есть!';
+            return;
+        }
+        const region = document.getElementById('fmCoRegion').value.trim() || 'Не указан';
+        const contact = document.getElementById('fmCoContact').value.trim();
+        const pos = document.getElementById('fmCoPos').value.trim();
+
+        curData.companies.push({ name, region, contact, pos });
+        // Generate logo
+        logoCache[name] = generateInitialsLogo(name);
+
+        markDirty();
+        build(curData, true);
+        rebuildCurrentView();
+        closeFormModal();
+    };
+}
+
+// Wire +М and +К buttons
+document.getElementById('bAddEvent').onclick = openAddEventModal;
+document.getElementById('bAddCompany').onclick = () => {
+    if (!curData) return;
+    openAddCompanyModal();
+};
+
+// ============================
+// EVENTS VIEW
+// ============================
+function buildEventsView() {
+    const ve = document.getElementById('viewEvents');
+    const acts = curData ? curData.activities : [];
+    let html = '<div class="list-view"><h2>Маркетинговые мероприятия</h2>';
+
+    EVENTS_META.forEach((em, idx) => {
+        const coSet = new Set();
+        acts.filter(a => a.event === em.name).forEach(a => coSet.add(a.company));
+        const coCount = coSet.size;
+        const durLabel = em.duration >= 99 ? 'постоянно' : em.duration + ' нед.';
+        const notes = em.notes || '';
+
+        html += `<div class="lv-card">`;
+        html += `<div class="lv-color" style="background:${em.color}"></div>`;
+        html += `<div class="lv-body">`;
+        html += `<div class="lv-title">${em.name}</div>`;
+        html += `<div class="lv-meta">Начало: <b>${em.weekStart + 1}w</b> · Длительность: <b>${durLabel}</b> · Компаний: <b>${coCount}</b></div>`;
+        html += `<textarea class="lv-notes" data-ev-idx="${idx}" placeholder="Заметки...">${notes}</textarea>`;
+        html += `</div>`;
+        html += `<div class="lv-actions">`;
+        html += `<button class="lv-del" data-ev-del="${idx}">Удалить</button>`;
+        html += `</div>`;
+        html += `</div>`;
+    });
+
+    html += `<button class="lv-add-btn" id="evAddBtn">+ Добавить мероприятие</button>`;
+    html += '</div>';
+    ve.innerHTML = html;
+
+    // Wire events
+    ve.querySelectorAll('.lv-notes[data-ev-idx]').forEach(ta => {
+        ta.addEventListener('blur', () => {
+            const i = parseInt(ta.dataset.evIdx);
+            if (EVENTS_META[i]) { EVENTS_META[i].notes = ta.value; markDirty(); }
+        });
+    });
+    ve.querySelectorAll('[data-ev-del]').forEach(btn => {
+        btn.onclick = () => {
+            const i = parseInt(btn.dataset.evDel);
+            const em = EVENTS_META[i];
+            if (!em) return;
+            customConfirm(`Мероприятие «${em.name}» будет удалено.\nКомпании, связанные с ним, потеряют все активности.`, 'Удалить мероприятие?').then(ok => {
+                if (!ok) return;
+                // Remove activities linked to this event
+                if (curData) {
+                    curData.activities = curData.activities.filter(a => a.event !== em.name);
+                }
+                EVENTS_META.splice(i, 1);
+                rebuildEventsDerived();
+                markDirty();
+                if (curData) build(curData, true);
+                buildEventsView();
+            });
+        };
+    });
+    const addBtn = document.getElementById('evAddBtn');
+    if (addBtn) addBtn.onclick = () => { openAddEventModal(); };
+}
+
+// ============================
+// COMPANIES VIEW
+// ============================
+function buildCompaniesView() {
+    const vc = document.getElementById('viewCompanies');
+    if (!curData) { vc.innerHTML = '<div class="list-view"><h2>Компании</h2><p style="color:var(--dim)">Загрузите данные для просмотра</p></div>'; return; }
+    const { companies, activities } = curData;
+
+    let html = '<div class="list-view"><h2>Компании</h2>';
+
+    companies.forEach((co, idx) => {
+        const coActs = activities.filter(a => a.company === co.name).sort((a, b) => new Date(a.date) - new Date(b.date));
+        const initEvent = coActs.length > 0 ? coActs[0].event : '—';
+        const evColor = EVENT_COLORS[initEvent] || '#555';
+        // Find max stage
+        let maxStage = null, maxOrder = 0;
+        coActs.forEach(a => {
+            const si = STAGES.findIndex(s => s.id === a.stage);
+            if (si >= 0 && STAGES[si].order > maxOrder) { maxOrder = STAGES[si].order; maxStage = STAGES[si]; }
+        });
+        const stageLabel = maxStage ? maxStage.name : '—';
+        const stageColor = maxStage ? SCOLORS[STAGES.indexOf(maxStage)] : '#555';
+        const notes = co.notes || '';
+
+        // Logo
+        const logoUrl = LOGO_URLS[co.name];
+        let logoHtml;
+        if (logoUrl) {
+            logoHtml = `<img class="lv-logo" src="${logoUrl}" onerror="this.style.display='none'">`;
+        } else {
+            const parts = co.name.replace(/[^\wА-Яа-яЁё]/g, ' ').trim().split(/\s+/);
+            const init = parts.length > 1 ? (parts[0][0] + parts[1][0]).toUpperCase() : co.name.substring(0, 2).toUpperCase();
+            let hash = 0; for (let i = 0; i < co.name.length; i++) hash = co.name.charCodeAt(i) + ((hash << 5) - hash);
+            const hue = Math.abs(hash) % 360;
+            logoHtml = `<div class="lv-logo-init" style="background:hsl(${hue},55%,45%)">${init}</div>`;
+        }
+
+        html += `<div class="lv-card">`;
+        html += logoHtml;
+        html += `<div class="lv-body">`;
+        html += `<div class="lv-title">${co.name}</div>`;
+        html += `<div class="lv-meta">`;
+        html += `${co.region || ''} · ${co.contact || ''} ${co.pos ? '(' + co.pos + ')' : ''}`;
+        html += `<br>Мероприятие: <span class="lv-badge" style="background:${evColor}">${initEvent}</span>`;
+        html += ` · Этап: <span class="lv-badge" style="background:${stageColor}">${stageLabel}</span>`;
+        html += ` · Активностей: <b>${coActs.length}</b>`;
+        html += `</div>`;
+        html += `<textarea class="lv-notes" data-co-idx="${idx}" placeholder="Заметки о компании...">${notes}</textarea>`;
+        html += `</div>`;
+        html += `<div class="lv-actions">`;
+        html += `<button class="lv-news" data-co-news="${idx}">🔍 Новости</button>`;
+        html += `<button class="lv-del" data-co-del="${idx}">Удалить</button>`;
+        html += `</div>`;
+        html += `</div>`;
+    });
+
+    html += `<button class="lv-add-btn" id="coAddBtn">+ Добавить компанию</button>`;
+    html += '</div>';
+    vc.innerHTML = html;
+
+    // Wire events
+    vc.querySelectorAll('.lv-notes[data-co-idx]').forEach(ta => {
+        ta.addEventListener('blur', () => {
+            const i = parseInt(ta.dataset.coIdx);
+            if (curData.companies[i]) { curData.companies[i].notes = ta.value; markDirty(); }
+        });
+    });
+    vc.querySelectorAll('[data-co-news]').forEach(btn => {
+        btn.onclick = () => {
+            const i = parseInt(btn.dataset.coNews);
+            const co = curData.companies[i];
+            if (!co) return;
+            const q = encodeURIComponent(co.name + ' недвижимость новости');
+            openNewsFrame(co.name, `https://www.google.com/search?q=${q}&tbm=nws&tbs=qdr:m`);
+        };
+    });
+    vc.querySelectorAll('[data-co-del]').forEach(btn => {
+        btn.onclick = () => {
+            const i = parseInt(btn.dataset.coDel);
+            const co = curData.companies[i];
+            if (!co) return;
+            customConfirm(`Компания «${co.name}» и все её активности будут удалены.`, 'Удалить компанию?').then(ok => {
+                if (!ok) return;
+                curData.activities = curData.activities.filter(a => a.company !== co.name);
+                curData.companies.splice(i, 1);
+                markDirty();
+                build(curData, true);
+                buildCompaniesView();
+            });
+        };
+    });
+    const addBtn = document.getElementById('coAddBtn');
+    if (addBtn) addBtn.onclick = () => { openAddCompanyModal(); };
+}
+
+// ============================
+// NEWS IFRAME OVERLAY
+// ============================
+let currentNewsUrl = '';
+
+function openNewsFrame(companyName, url) {
+    currentNewsUrl = url;
+    document.getElementById('newsTitle').textContent = '🔍 Новости: ' + companyName;
+    document.getElementById('newsFrame').src = url;
+    document.getElementById('newsOverlay').classList.add('show');
+}
+
+function closeNewsFrame() {
+    document.getElementById('newsOverlay').classList.remove('show');
+    document.getElementById('newsFrame').src = '';
+    currentNewsUrl = '';
+}
+
+document.getElementById('newsClose').onclick = closeNewsFrame;
+document.getElementById('newsOpenExt').onclick = () => {
+    if (currentNewsUrl) window.open(currentNewsUrl, '_blank');
+};
+
+function build2D() {
+    if (!curData) return;
+    const v2 = document.getElementById('view2d');
+    const { companies, activities } = curData;
+    const coNames = [...new Set(companies.map(c => c.name))];
+
+    // nWeeks is global
+    const allDates = activities.map(a => new Date(a.date)).filter(d => !isNaN(d));
+    const minDate = new Date(Math.min(...allDates));
+    const dayOfWeek = minDate.getDay();
+    const weekStart = new Date(minDate);
+    weekStart.setDate(weekStart.getDate() - ((dayOfWeek + 6) % 7));
+
+    function dateToWeek(dateStr) {
+        const d = new Date(dateStr);
+        return Math.floor((d - weekStart) / (7 * 24 * 60 * 60 * 1000));
+    }
+
+    // Each company has ONE event (the one that initiated contact = earliest activity)
+    const companyEvent = {};
+    coNames.forEach(co => {
+        const coActs = activities.filter(a => a.company === co);
+        if (coActs.length === 0) return;
+        coActs.sort((a, b) => new Date(a.date) - new Date(b.date));
+        companyEvent[co] = coActs[0].event;
+    });
+
+    // Filters:
+    // Events — keep only companies whose event is in the filter
+    // Regions — keep only companies from checked regions
+    const filteredCoNames = coNames.filter(co => {
+        const comp = companies.find(c => c.name === co);
+        if (!comp || !filters.regions.has(comp.region)) return false;
+        const ev = companyEvent[co];
+        if (!ev || !filters.events.has(ev)) return false;
+        return true;
+    });
+
+    // Build cell map: company|week → single activity
+    // Apply stage filter on individual cells
+    const cellMap = {}; // key: "company|week" → {act, si}
+    let actualMaxWeek2D = 0;
+    activities.forEach(act => {
+        // Stage filter
+        if (!filters.stages.has(act.stage)) return;
+        // Only include companies that passed filters above
+        if (!filteredCoNames.includes(act.company)) return;
+        const wi = dateToWeek(act.date);
+        if (wi < 0 || wi >= nWeeks) return;
+        const si = STAGES.findIndex(s => s.id === act.stage);
+        cellMap[`${act.company}|${wi}`] = { ...act, si: si >= 0 ? si : 0 };
+        if (wi > actualMaxWeek2D) actualMaxWeek2D = wi;
+    });
+
+    // Table
+    let html = '<table><tr><th class="corner"></th>';
+    for (let w = 0; w < nWeeks; w++) html += `<th>${w + 1}w</th>`;
+    html += '</tr>';
+
+    filteredCoNames.forEach(co => {
+        const logoUrl = LOGO_URLS[co] || '';
+        const logoHtml = logoUrl ? `<img class="co-logo" src="${logoUrl}" onerror="this.style.display='none'">` : '';
+        const ev = companyEvent[co] || '';
+        const comp = companies.find(c => c.name === co);
+        const titleAttr = `${co}${comp ? ' [' + comp.region + ']' : ''}&#10;Мероприятие: ${ev}`;
+        html += `<tr><th class="co-header" title="${titleAttr}">${logoHtml}${co}</th>`;
+        for (let w = 0; w < nWeeks; w++) {
+            const cell = cellMap[`${co}|${w}`];
+            if (cell) {
+                const color = SCOLORS[cell.si];
+                const isLastWeek = (w === actualMaxWeek2D) && blinkEnabled;
+                const blinkCls = isLastWeek ? ' blink2d' : '';
+                html += `<td><div class="cell2d filled${blinkCls}" style="background:${color}" data-co="${co}" data-wi="${w}" data-filled="1" title="${cell.event}&#10;${cell.stageName} · ${cell.date}"></div></td>`;
+            } else {
+                html += `<td><div class="cell2d empty-cell" data-co="${co}" data-wi="${w}" data-filled="0" title="Добавить: ${co}, нед.${w+1}"></div></td>`;
+            }
+        }
+        html += '</tr>';
+    });
+    html += '</table>';
+    v2.innerHTML = html;
+
+    // Cell clicks
+    v2.querySelectorAll('.cell2d').forEach(cell => {
+        cell.onclick = () => {
+            const co = cell.dataset.co;
+            const wi = parseInt(cell.dataset.wi);
+            const isFilled = cell.dataset.filled === '1';
+            const comp = companies.find(c => c.name === co);
+
+            if (isFilled) {
+                const act = cellMap[`${co}|${wi}`];
+                if (act) openEditPanel({ userData: act }, false);
+            } else {
+                // Add new — use this company's event
+                const ev = companyEvent[co] || '';
+                const newDate = new Date(weekStart);
+                newDate.setDate(newDate.getDate() + wi * 7);
+                openEditPanel({
+                    userData: {
+                        company: co, event: ev, wi,
+                        region: comp ? comp.region : '',
+                        contact: comp ? comp.contact : '',
+                        position: comp ? comp.pos : '',
+                        stage: STAGES[0].id,
+                        date: newDate.toISOString().slice(0, 10),
+                    }
+                }, true);
+            }
+        };
+
+        // Right-click on filled cells — custom confirm delete
+        if (cell.dataset.filled === '1') {
+            cell.oncontextmenu = (e) => {
+                e.preventDefault();
+                const co = cell.dataset.co;
+                const wi = parseInt(cell.dataset.wi);
+                const act = cellMap[`${co}|${wi}`];
+                if (act && curData) {
+                    customConfirm(
+                        `${act.company} — ${act.event}\n${act.stageName} (нед.${wi+1})`,
+                        'Удалить активность?'
+                    ).then(ok => {
+                        if (ok) {
+                            const di = curData.activities.findIndex(a =>
+                                a.company === act.company && a.event === act.event &&
+                                a.stage === act.stage && a.date === act.date
+                            );
+                            if (di >= 0) { curData.activities.splice(di, 1); markDirty(); build(curData, true); rebuildCurrentView(); }
+                        }
+                    });
+                }
+            };
+        }
+    });
+}
+
+// ============================
+// TIMELINE VIEW (Gantt-like)
+// ============================
+function buildTimeline() {
+    if (!curData) return;
+    const vt = document.getElementById('viewTimeline');
+    const { companies, activities } = curData;
+
+    const allDates = activities.map(a => new Date(a.date)).filter(d => !isNaN(d));
+    const minDate = new Date(Math.min(...allDates));
+    const dayOfWeek = minDate.getDay();
+    const weekStart = new Date(minDate);
+    weekStart.setDate(weekStart.getDate() - ((dayOfWeek + 6) % 7));
+
+    function dateToWeek(dateStr) {
+        const d = new Date(dateStr);
+        return Math.floor((d - weekStart) / (7 * 24 * 60 * 60 * 1000));
+    }
+
+    const weekPx = 32; // match 2D cell width (28px cell + 2*2px padding)
+    const totalW = nWeeks * weekPx;
+
+    // Build event bars from ALL EVENTS_META (not just used ones)
+    // Show every event as a timeline bar, even if no companies assigned yet
+    const eventBars = EVENTS_META
+        .filter(em => filters.events.has(em.name))
+        .map(em => ({
+            name: em.name,
+            color: em.color,
+            startW: em.weekStart,
+            endW: Math.min(em.weekStart + em.duration, nWeeks),
+            // Count companies that came from this event
+            companyCount: activities.filter(a => a.event === em.name)
+                .reduce((s, a) => { s.add(a.company); return s; }, new Set()).size,
+        }));
+
+    // Build per-company pipeline bars (stages over time)
+    const coNames = [...new Set(companies.map(c => c.name))];
+
+    // Week grid lines
+    let gridLines = '';
+    for (let w = 0; w <= nWeeks; w++) {
+        gridLines += `<div class="tl-grid-line" style="left:${w * weekPx}px"></div>`;
+    }
+
+    // Header with week numbers
+    let html = '<div class="tl-container">';
+    html += '<div class="tl-header">';
+    for (let w = 0; w < nWeeks; w++) {
+        html += `<div class="tl-week-label" style="width:${weekPx}px">${w + 1}w</div>`;
+    }
+    html += '</div>';
+
+    // Section 1: Marketing Activities (events as horizontal bars)
+    html += '<div class="tl-section">';
+    html += '<div class="tl-section-title">Маркетинговые активности</div>';
+    eventBars.forEach(eb => {
+        const left = eb.startW * weekPx;
+        const width = (eb.endW - eb.startW) * weekPx - 2;
+        const label = eb.companyCount;
+        html += `<div class="tl-row">`;
+        html += `<div class="tl-row-label" title="${eb.name} (${eb.companyCount} комп.)">${eb.name}</div>`;
+        html += `<div class="tl-row-bars" style="width:${totalW}px">`;
+        html += gridLines;
+        html += `<div class="tl-bar" style="left:${left}px;width:${Math.max(width, 8)}px;background:${eb.color}" title="${eb.name}: нед.${eb.startW+1}–${eb.endW}, ${eb.companyCount} комп.">${width > 20 ? label : ''}</div>`;
+        html += `</div></div>`;
+    });
+    html += '</div>';
+
+    // Section 2: Company pipelines (each company's stage progression)
+    html += '<div class="tl-section">';
+    html += '<div class="tl-section-title">Воронка по компаниям</div>';
+
+    const filteredCo = coNames.filter(co => {
+        const comp = companies.find(c => c.name === co);
+        if (!comp || !filters.regions.has(comp.region)) return false;
+        const coActs = activities.filter(a => a.company === co);
+        if (coActs.length === 0) return false;
+        const initEv = coActs.sort((a, b) => new Date(a.date) - new Date(b.date))[0].event;
+        return filters.events.has(initEv);
+    });
+
+    filteredCo.forEach(co => {
+        const coActs = activities.filter(a => a.company === co && filters.stages.has(a.stage))
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+        if (coActs.length === 0) return;
+
+        html += `<div class="tl-row">`;
+        const logoUrl = LOGO_URLS[co] || '';
+        const logoHtml = logoUrl ? `<img class="co-logo" src="${logoUrl}" onerror="this.style.display='none'">` : '';
+        const comp = companies.find(c => c.name === co);
+        const initEv = coActs[0].event;
+        html += `<div class="tl-row-label" title="${co} [${comp?.region||''}]\n${initEv}">${logoHtml}${co}</div>`;
+        html += `<div class="tl-row-bars" style="width:${totalW}px">`;
+        html += gridLines;
+
+        // Each stage as a colored block at its week position
+        coActs.forEach(act => {
+            const wi = dateToWeek(act.date);
+            if (wi < 0 || wi >= nWeeks) return;
+            const si = STAGES.findIndex(s => s.id === act.stage);
+            const color = SCOLORS[si >= 0 ? si : 0];
+            const left = wi * weekPx;
+            const isLast = (wi === maxWeekIdx) && blinkEnabled;
+            const blinkStyle = isLast ? 'animation:blink2d 1.2s ease-in-out infinite;' : '';
+            html += `<div class="tl-bar" style="left:${left}px;width:${weekPx - 2}px;background:${color};${blinkStyle}" title="${act.stageName}\n${act.event} · ${act.date}">${si >= 0 ? STAGES[si].order : ''}</div>`;
+        });
+
+        html += `</div></div>`;
+    });
+    html += '</div>';
+
+    html += '</div>';
+    vt.innerHTML = html;
+}
+
+// beforeunload — warn if unsaved changes
+window.addEventListener('beforeunload', e => {
+    if (dirty) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+// INIT
+init3D();
+
+// Auto-load from localStorage on startup
+(async function autoLoad() {
+    const saved = loadFromStorage();
+    if (saved) {
+        document.getElementById('upload').classList.add('gone');
+        if (saved.nWeeks) nWeeks = saved.nWeeks;
+        // Restore custom events if saved
+        if (saved.eventsMeta && Array.isArray(saved.eventsMeta)) {
+            EVENTS_META.length = 0;
+            saved.eventsMeta.forEach(e => EVENTS_META.push(e));
+            rebuildEventsDerived();
+        }
+        if (!logosReady) await preloadLogos();
+        build(saved.curData);
+        if (currentView === '3d') switchView('2d');
+        markClean();
+    }
+})();
+</script>
+</body>
+</html>
