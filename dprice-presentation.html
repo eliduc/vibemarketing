@@ -1,0 +1,1705 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DPrice — Математически оптимальное ценообразование</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* ============================================
+   GLOBAL RESET & BASE
+   ============================================ */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #FAFAFA;
+  --bg-card: #FFFFFF;
+  --text-primary: #1A1A2E;
+  --text-secondary: #6B7280;
+  --text-muted: #9CA3AF;
+  --accent: #2563EB;
+  --accent-light: #DBEAFE;
+  --accent-dark: #1D4ED8;
+  --danger: #EF4444;
+  --danger-light: #FEE2E2;
+  --success: #10B981;
+  --success-light: #D1FAE5;
+  --warning: #F59E0B;
+  --warning-light: #FEF3C7;
+  --border: #E5E7EB;
+  --border-light: #F3F4F6;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.06);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.08);
+  --shadow-xl: 0 20px 60px rgba(0,0,0,0.1);
+  --radius: 16px;
+  --radius-sm: 8px;
+  --radius-xs: 4px;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --slide-max-width: 1120px;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text-primary);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ============================================
+   PRESENTATION ENGINE
+   ============================================ */
+.presentation {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+.slide {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateY(20px);
+  padding: 60px 80px;
+}
+
+.slide.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  z-index: 10;
+}
+
+.slide-inner {
+  width: 100%;
+  max-width: var(--slide-max-width);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* ============================================
+   NAVIGATION
+   ============================================ */
+.nav-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  z-index: 100;
+}
+
+.nav-progress {
+  flex: 1;
+  height: 2px;
+  background: var(--border);
+  border-radius: 1px;
+  margin: 0 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 1px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+
+.nav-btn:hover {
+  background: var(--bg);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.nav-counter {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  min-width: 60px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================
+   TYPOGRAPHY
+   ============================================ */
+.slide-title {
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+}
+
+.slide-title .accent {
+  color: var(--accent);
+}
+
+.slide-title .danger {
+  color: var(--danger);
+}
+
+.slide-subtitle {
+  font-size: clamp(18px, 2vw, 22px);
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  max-width: 720px;
+}
+
+.section-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+
+.big-number {
+  font-size: clamp(56px, 8vw, 96px);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.big-number.danger { color: var(--danger); }
+.big-number.accent { color: var(--accent); }
+.big-number.success { color: var(--success); }
+
+/* ============================================
+   CARDS & CONTAINERS
+   ============================================ */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.3s, transform 0.3s;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.card-grid-2 { grid-template-columns: repeat(2, 1fr); }
+.card-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.card-grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+.card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-bottom: 16px;
+}
+
+.card-icon.blue { background: var(--accent-light); color: var(--accent); }
+.card-icon.red { background: var(--danger-light); color: var(--danger); }
+.card-icon.green { background: var(--success-light); color: var(--success); }
+.card-icon.yellow { background: var(--warning-light); color: var(--warning); }
+
+.card h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.card p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+/* ============================================
+   QUOTE
+   ============================================ */
+.quote-block {
+  border-left: 3px solid var(--accent);
+  padding: 24px 32px;
+  background: linear-gradient(135deg, var(--accent-light) 0%, transparent 100%);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  margin: 24px 0;
+}
+
+.quote-block p {
+  font-size: 17px;
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.quote-block .quote-source {
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 500;
+  color: var(--accent);
+  margin-top: 12px;
+}
+
+/* ============================================
+   TABLE
+   ============================================ */
+.comparison-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.comparison-table thead th {
+  background: var(--text-primary);
+  color: white;
+  font-weight: 600;
+  padding: 16px 20px;
+  text-align: left;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+.comparison-table thead th:first-child {
+  width: 30%;
+}
+
+.comparison-table thead th.col-bad {
+  background: #991B1B;
+}
+
+.comparison-table thead th.col-good {
+  background: #065F46;
+}
+
+.comparison-table tbody td {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-light);
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+.comparison-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.comparison-table tbody tr:hover {
+  background: #F9FAFB;
+}
+
+.comparison-table .param {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.comparison-table .bad {
+  color: var(--danger);
+}
+
+.comparison-table .good {
+  color: #059669;
+  font-weight: 500;
+}
+
+/* ============================================
+   CHART / VISUALIZATION
+   ============================================ */
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  height: 200px;
+  padding-top: 20px;
+}
+
+.bar-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.bar {
+  width: 100%;
+  border-radius: 8px 8px 0 0;
+  transition: height 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  min-height: 4px;
+}
+
+.bar.red { background: linear-gradient(180deg, #FCA5A5, #EF4444); }
+.bar.blue { background: linear-gradient(180deg, #93C5FD, #2563EB); }
+.bar.green { background: linear-gradient(180deg, #6EE7B7, #10B981); }
+.bar.gray { background: linear-gradient(180deg, #D1D5DB, #9CA3AF); }
+
+.bar-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.3;
+}
+
+.bar-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ============================================
+   ERROR RANGE VISUALIZATION
+   ============================================ */
+.error-range {
+  position: relative;
+  height: 80px;
+  margin: 32px 0;
+}
+
+.error-range-track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  transform: translateY(-50%);
+}
+
+.error-range-zone {
+  position: absolute;
+  top: 50%;
+  height: 40px;
+  border-radius: 8px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+}
+
+.error-range-label {
+  position: absolute;
+  bottom: -4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* ============================================
+   FLOW DIAGRAM
+   ============================================ */
+.flow-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.flow-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  min-width: 120px;
+  box-shadow: var(--shadow-sm);
+}
+
+.flow-arrow {
+  font-size: 20px;
+  color: var(--text-muted);
+}
+
+.flow-item.highlight {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+/* ============================================
+   STAT ROW
+   ============================================ */
+.stat-row {
+  display: flex;
+  gap: 24px;
+  margin-top: 32px;
+}
+
+.stat-item {
+  flex: 1;
+  text-align: center;
+  padding: 24px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.stat-item .stat-value {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.stat-item .stat-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+/* ============================================
+   PILL / BADGE
+   ============================================ */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 4px;
+}
+
+.pill.red { background: var(--danger-light); color: #991B1B; }
+.pill.green { background: var(--success-light); color: #065F46; }
+.pill.blue { background: var(--accent-light); color: #1E40AF; }
+.pill.yellow { background: var(--warning-light); color: #92400E; }
+
+/* ============================================
+   LIST
+   ============================================ */
+.check-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.check-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.check-list .icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  margin-top: 1px;
+}
+
+.check-list .icon.green { background: var(--success-light); color: var(--success); }
+.check-list .icon.red { background: var(--danger-light); color: var(--danger); }
+
+/* ============================================
+   TITLE SLIDE SPECIAL
+   ============================================ */
+.slide-cover {
+  background: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.slide-cover::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.06) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.slide-cover::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  left: -10%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.04) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.cover-content {
+  position: relative;
+  z-index: 2;
+}
+
+.brand-mark {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 40px;
+}
+
+.cover-title {
+  font-size: clamp(40px, 5.5vw, 64px);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  max-width: 800px;
+}
+
+.cover-divider {
+  width: 64px;
+  height: 4px;
+  background: var(--accent);
+  border-radius: 2px;
+  margin-bottom: 24px;
+}
+
+.cover-subtitle {
+  font-size: clamp(16px, 1.8vw, 20px);
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-width: 560px;
+}
+
+/* ============================================
+   SECTION DIVIDER SLIDE
+   ============================================ */
+.slide-section {
+  background: var(--text-primary);
+}
+
+.slide-section .section-number {
+  font-size: 120px;
+  font-weight: 900;
+  color: rgba(255,255,255,0.06);
+  position: absolute;
+  top: 40px;
+  right: 80px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.slide-section .slide-title {
+  color: white;
+  max-width: 640px;
+}
+
+.slide-section .slide-subtitle {
+  color: rgba(255,255,255,0.6);
+}
+
+.slide-section .section-label {
+  color: rgba(255,255,255,0.4);
+}
+
+/* ============================================
+   FUNNEL VISUALIZATION
+   ============================================ */
+.funnel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 24px 0;
+}
+
+.funnel-step {
+  height: 44px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================
+   TWO-COLUMN LAYOUT
+   ============================================ */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: start;
+}
+
+.two-col-40-60 {
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+  gap: 48px;
+  align-items: start;
+}
+
+/* ============================================
+   VERSUS LAYOUT
+   ============================================ */
+.vs-layout {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+.vs-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 40px;
+}
+
+.vs-badge {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.vs-col h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border);
+}
+
+.vs-col.bad h3 { border-color: var(--danger); color: var(--danger); }
+.vs-col.good h3 { border-color: var(--success); color: #059669; }
+
+/* ============================================
+   ANIMATED COUNTER
+   ============================================ */
+.counter-row {
+  display: flex;
+  gap: 32px;
+  margin-top: 16px;
+}
+
+.counter-block {
+  flex: 1;
+  padding: 32px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.counter-block .counter-value {
+  font-size: 48px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.counter-block .counter-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+/* ============================================
+   SOURCE / FOOTNOTE
+   ============================================ */
+.slide-source {
+  position: absolute;
+  bottom: 72px;
+  left: 80px;
+  font-size: 11px;
+  color: var(--text-muted);
+  max-width: 800px;
+  line-height: 1.4;
+}
+
+.slide-source a, .quote-source a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.slide-source a:hover, .quote-source a:hover {
+  border-bottom-color: var(--accent);
+}
+
+/* ============================================
+   CLOSING SLIDE
+   ============================================ */
+.slide-closing {
+  background: linear-gradient(135deg, #1A1A2E 0%, #16213E 100%);
+}
+
+.slide-closing .cover-title {
+  color: white;
+}
+
+.slide-closing .cover-divider {
+  background: var(--accent);
+}
+
+.slide-closing .cover-subtitle {
+  color: rgba(255,255,255,0.6);
+}
+
+.slide-closing .brand-mark {
+  color: rgba(255,255,255,0.4);
+}
+
+/* ============================================
+   KEYFRAME ANIMATIONS
+   ============================================ */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.slide.active .animate-in {
+  animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.slide.active .delay-1 { animation-delay: 0.1s; }
+.slide.active .delay-2 { animation-delay: 0.2s; }
+.slide.active .delay-3 { animation-delay: 0.3s; }
+.slide.active .delay-4 { animation-delay: 0.4s; }
+.slide.active .delay-5 { animation-delay: 0.5s; }
+
+/* ============================================
+   KEYBOARD HINT
+   ============================================ */
+.keyboard-hint {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 200;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.keyboard-hint.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="presentation" id="presentation">
+
+<!-- =====================================================
+     SLIDE 1 — COVER
+     ===================================================== -->
+<div class="slide slide-cover active" data-slide="0">
+  <div class="slide-inner cover-content">
+    <div class="brand-mark animate-in">DPrice</div>
+    <h1 class="cover-title animate-in delay-1">
+      Почему спрос — единственная<br>надёжная метрика<br>ценообразования
+    </h1>
+    <div class="cover-divider animate-in delay-2"></div>
+    <p class="cover-subtitle animate-in delay-3">
+      Математические и рыночные аргументы против эмпирического ценообразования на основе цен конкурентов
+    </p>
+  </div>
+</div>
+
+<!-- =====================================================
+     SLIDE 2 — AGENDA
+     ===================================================== -->
+<div class="slide" data-slide="1">
+  <div class="slide-inner">
+    <div class="section-label animate-in">Содержание</div>
+    <h2 class="slide-title animate-in delay-1">Структура<br>аргументации</h2>
+    <div class="card-grid card-grid-3 animate-in delay-2" style="margin-top: 36px;">
+      <div class="card">
+        <div class="card-icon red">1</div>
+        <h3>Проблема данных</h3>
+        <p>Почему данные о ценах конкурентов ненадёжны и вносят критическую погрешность</p>
+      </div>
+      <div class="card">
+        <div class="card-icon red">2</div>
+        <h3>Уникальность объектов</h3>
+        <p>Почему каждый ЖК — уникальный продукт, не поддающийся генерализации</p>
+      </div>
+      <div class="card">
+        <div class="card-icon red">3</div>
+        <h3>Ограничения ML</h3>
+        <p>Почему машинное обучение не работает эффективно в девелопменте</p>
+      </div>
+      <div class="card">
+        <div class="card-icon yellow">4</div>
+        <h3>Макрофакторы</h3>
+        <p>Почему внешние шоки разрушают конкурентные модели ценообразования</p>
+      </div>
+      <div class="card">
+        <div class="card-icon blue">5</div>
+        <h3>Сила спроса</h3>
+        <p>Почему спрос содержит в себе все рыночные сигналы одновременно</p>
+      </div>
+      <div class="card">
+        <div class="card-icon green">6</div>
+        <h3>Подход DPrice</h3>
+        <p>Как DPrice строит оптимальную функцию цены от реального спроса</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     SLIDE 3 — SECTION: DATA PROBLEM
+     ===================================================== -->
+<div class="slide slide-section" data-slide="2">
+  <div class="slide-inner">
+    <div class="section-number">01</div>
+    <div class="section-label animate-in">Раздел первый</div>
+    <h2 class="slide-title animate-in delay-1">Данные о конкурентах<br>ненадёжны</h2>
+    <p class="slide-subtitle animate-in delay-2">Погрешность данных превышает ожидаемый эффект от системы ценообразования</p>
+  </div>
+</div>
+
+<!-- =====================================================
+     SLIDE 4 — ERROR MARGIN
+     ===================================================== -->
+<div class="slide" data-slide="3">
+  <div class="slide-inner">
+    <div class="section-label animate-in">Проблема данных</div>
+    <h2 class="slide-title animate-in delay-1">Погрешность <span class="danger">поглощает</span> эффект</h2>
+
+    <div class="two-col animate-in delay-2" style="margin-top: 32px;">
+      <div>
+        <div class="counter-block" style="margin-bottom: 16px;">
+          <div class="counter-value" style="color: var(--danger);">1–7%</div>
+          <div class="counter-desc">Погрешность сбора данных о ценах конкурентов из открытых источников</div>
+        </div>
+        <div class="counter-block">
+          <div class="counter-value" style="color: var(--success);">1–5%</div>
+          <div class="counter-desc">Ожидаемый эффект от системы динамического ценообразования</div>
+        </div>
+      </div>
+      <div>
+        <div class="quote-block">
+          <p>Те, кто продаёт такую аналитику, собирают информацию из публичных источников — сайтов застройщиков и площадок объявлений — но эти цены часто не являются конечными</p>
+          <div class="quote-source">Ирина Корсун, сооснователь DigitalDeveloper — <a href="https://vc.ru/services/201179-cenoobrazovanie-v-developmente-avtopilot-ili-ruchnoe-upravlenie" target="_blank">vc.ru</a></div>
+        </div>
+        <ul class="check-list" style="margin-top: 20px;">
+          <li><span class="icon red">&#10007;</span>Росреестр не раскрывает цены сделок</li>
+          <li><span class="icon red">&#10007;</span>Индивидуальные скидки не отражены в прайсах</li>
+          <li><span class="icon red">&#10007;</span>Субсидированная ипотека искажает реальную стоимость</li>
+          <li><span class="icon red">&#10007;</span>Trade-in и рассрочки не учитываются</li>
+        </ul>
+      </div>
+    </div>
+    <div class="slide-source">Источники: <a href="https://vc.ru/services/201179-cenoobrazovanie-v-developmente-avtopilot-ili-ruchnoe-upravlenie" target="_blank">vc.ru — Profitbase</a> &middot; <a href="https://erzrf.ru/publikacii/tsenoobrazovaniye-v-developmente-avtopilot-ili-ruchnoye-upravleniye" target="_blank">erzrf.ru</a> &middot; <a href="https://blog.profitbase.ru/dinamichieskoie-tsienoobrazovaniie-triend-ili-instrumient-pomoghaiushchii-zarabotat/" target="_blank">blog.profitbase.ru</a></div>
+  </div>
+</div>
+
+<!-- =====================================================
+     SLIDE 5 — VISUALIZATION: ERROR VS EFFECT
+     ===================================================== -->
+<div class="slide" data-slide="4">
+  <div class="slide-inner">
+    <div class="section-label animate-in">Проблема данных</div>
+    <h2 class="slide-title animate-in delay-1">Ошибка в данных <span class="danger">обнуляет</span> эффект</h2>
+    <p class="slide-subtitle animate-in delay-2">Визуализация: диапазон погрешности vs. ожидаемый эффект</p>
+
+    <div class="animate-in delay-3" style="margin-top: 48px; position: relative;">
+      <!-- Error bar chart -->
+      <div style="display: flex; align-items: center; gap: 24px; margin-bottom: 24px;">
+        <div style="width: 200px; text-align: right; font-size: 14px; font-weight: 600; color: var(--danger);">Погрешность данных</div>
+        <div style="flex: 1; height: 48px; background: var(--danger-light); border-radius: 8px; position: relative; overflow: hidden;">
+          <div style="width: 70%; height: 100%; background: linear-gradient(90deg, #FCA5A5, #EF4444); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 18px;">1% — 7%</div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 24px; margin-bottom: 24px;">
+        <div style="width: 200px; text-align: right; font-size: 14px; font-weight: 600; color: var(--success);">Ожидаемый эффект</div>
+        <div style="flex: 1; height: 48px; background: var(--success-light); border-radius: 8px; position: relative; overflow: hidden;">
+          <div style="width: 50%; height: 100%; background: linear-gradient(90deg, #6EE7B7, #10B981); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 18px;">1% — 5%</div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 24px;">
+        <div style="width: 200px; text-align: right; font-size: 14px; font-weight: 600; color: var(--text-muted);">Перекрытие</div>
+        <div style="flex: 1; height: 48px; background: var(--warning-light); border-radius: 8px; position: relative; overflow: hidden;">
+          <div style="width: 100%; height: 100%; background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239,68,68,0.1) 10px, rgba(239,68,68,0.1) 20px); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; color: #92400E;">Ошибка полностью перекрывает потенциальную выгоду</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card animate-in delay-4" style="margin-top: 32px; border-color: var(--danger); border-width: 2px; text-align: center;">
+      <p style="font-size: 16px; font-weight: 600; color: var(--danger);">Вывод: система, построенная на данных с погрешностью 1-7%, при ожидаемом эффекте 1-5% статистически бесполезна</p>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     SLIDE 6 — SECTION: UNIQUENESS
+     ===================================================== -->
+<div class="slide slide-section" data-slide="5">
+  <div class="slide-inner">
+    <div class="section-number">02</div>
+    <div class="section-label animate-in">Раздел второй</div>
+    <h2 class="slide-title animate-in delay-1">Каждый ЖК —<br>уникальный продукт</h2>
+    <p class="slide-subtitle animate-in delay-2">Данные одного проекта нельзя перенести на другой без критической потери точности</p>
+  </div>
+</div>
+
+<!-- =====================================================
+     SLIDE 7 — UNIQUENESS FACTORS
+     ===================================================== -->
+<div class="slide" data-slide="6">
+  <div class="slide-inner">
+    <div class="section-label animate-in">Уникальность объектов</div>
+    <h2 class="slide-title animate-in delay-1">Факторы, делающие каждый ЖК <span class="accent">негенерализируемым</span></h2>
+
+    <div class="card-grid card-grid-4 animate-in delay-2" style="margin-top: 32px;">
+      <div class="card" style="text-align: center;">
+        <div class="card-icon blue" style="margin: 0 auto 16px;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2L2 7l8 5 8-5-8-5zM2 13l8 5 8-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <h3>Локация</h3>
+        <p>Район, транспорт, экология, инфраструктура — уникальны для каждого адреса</p>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div class="card-icon blue" style="margin: 0 auto 16px;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 10h14M10 3v14" stroke="currentColor" stroke-width="1.5"/></svg>
+        </div>
+        <h3>Планировки</h3>
+        <p>Квартирография, площади, этажность отличаются даже в соседних корпусах</p>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div class="card-icon blue" style="margin: 0 auto 16px;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v4l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <h3>Стадия</h3>
+        <p>Котлован vs. сдача — разная стоимость, разный профиль покупателя</p>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div class="card-icon blue" style="margin: 0 auto 16px;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2L3 18h14L10 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        </div>
+        <h3>Финмодель</h3>
+        <p>Проектное финансирование, ставки эскроу, маржинальность — у каждого застройщика свои</p>
+      </div>
+    </div>
+
+    <div class="quote-block animate-in delay-3" style="margin-top: 28px;">
+      <p>Новые объекты недвижимости уникальны — новые локации, планировки и окружение ограничивают возможность использования прошлого опыта для определения цен</p>
+      <div class="quote-source">Strategy Partners (Динамика) — <a href="https://strategy.ru/services/dynamicheskoe-tsenoobrazovanie/" target="_blank">strategy.ru</a></div>
+    </div>
+
+    <div class="quote-block animate-in delay-4" style="margin-top: 12px; border-color: var(--danger); background: linear-gradient(135deg, var(--danger-light) 0%, transparent 100%);">
+      <p>Данные другого проекта использовать нельзя — это разные проекты, сравнение которых даёт некорректные расчёты</p>
+      <div class="quote-source" style="color: var(--danger);">Profitbase — <a href="https://vc.ru/services/201179-cenoobrazovanie-v-developmente-avtopilot-ili-ruchnoe-upravlenie" target="_blank" style="color: var(--danger);">vc.ru</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     SLIDE 8 — PREMIUM ATTRIBUTES
+     ===================================================== -->
+<div class="slide" data-slide="7">
+  <div class="slide-inner">
+    <div class="section-label animate-in">Уникальность объектов</div>
+    <h2 class="slide-title animate-in delay-1">Премиальные атрибуты<br><span class="accent">не поддаются формализации</span></h2>
+
+    <div class="two-col animate-in delay-2" style="margin-top: 32px;">
+      <div>
+        <p style="font-size: 15px; line-height: 1.7; color: var(--text-secondary); margin-bottom: 24px;">
+          Факторы, за которые покупатели платят премию, оцениваются «на основании интуиции и опыта» — ни один ML-алгоритм не может их формализовать:
+        </p>
+        <ul class="check-list">
+          <li><span class="icon red">&#10007;</span>Панорамный вид — субъективен, зависит от этажа и ракурса</li>
+          <li><span class="icon red">&#10007;</span>Социальное окружение — не измеримо количественно</li>
+          <li><span class="icon red">&#10007;</span>Репутация застройщика — эмоциональный фактор</li>
+          <li><span class="icon red">&#10007;</span>Близость к семье — личный мотив покупателя</li>
+          <li><span class="icon red">&#10007;</span>Архитектурный стиль — вкусовая категория</li>
+        </ul>
+      </div>
+      <div>
+        <div class="card" style="border: 2px solid var(--warning); margin-bottom: 16px;">
+          <h3 style="color: var(--warning);">Проблема гедонистических моделей</h3>
+          <p style="margin-top: 8px;">Академическая критика (IMF, ResearchGate) указывает на фундаментальные ограничения:</p>
+          <ul class="check-list" style="margin-top: 12px;">
+            <li><span class="icon red">&#10007;</span><span><strong>Omitted Variable Bias</strong> — многие факторы качества не наблюдаемы</span></li>
+            <li><span class="icon red">&#10007;</span><span><strong>Информационная асимметрия</strong> — участники не знают все характеристики</span></li>
+            <li><span class="icon red">&#10007;</span><span><strong>Разрыв теория/практика</strong> — модели не проверены на реальном рынке</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="slide-source">Источники: <a href="https://vc.ru/id1371810/939728-principy-cenoobrazovaniya-v-developmente" target="_blank">vc.ru — Принципы ценообразования</a> &middot; <a href="https://www.imf.org/external/pubs/ft/wp/2016/wp16213.pdf" target="_blank">IMF WP/16/213</a> &middot; <a href="https://blog.profitbase.ru/tsieny-nievysiechiennyie-v-kamnie-siervis-dinamichieskogho-tsienoobrazovaniia-na-praktikie/" target="_blank">blog.profitbase.ru</a></div>
+  </div>
+</div>
+
+<!-- =====================================================
+     SLIDE 9 — SECTION: ML LIMITS
+     ===================================================== -->
+<div class="slide slide-section" data-slide="8">
+  <div class="slide-inner">
+    <div class="section-number">03</div>
+    <div class="section-label animate-in">Раздел третий</div>
+    <h2 class="slide-title animate-in delay-1">Ограничения<br>машинного обучения</h2>
+    <p class="slide-subtitle animate-in delay-2">Недостаточный объём данных, чёрный ящик и ложная точность</p>
+  </div>
+</div>
+
+<!-- =====================================================
+     SLIDE 10 — DATA VOLUME PROBLEM
+     ===================================================== -->
+<div class="slide" data-slide="9">
+  <div class="slide-inner">
+    <div class="section-label animate-in">Ограничения ML</div>
+    <h2 class="slide-title animate-in delay-1">Недостаточно данных<br>для <span class="danger">машинного обучения</span></h2>
+
+    <div class="animate-in delay-2" style="margin-top: 40px;">
+      <div style="display: flex; align-items: flex-end; gap: 48px; justify-content: center;">
+        <!-- Real estate bar -->
+        <div style="text-align: center;">
+          <div class="bar-value" style="color: var(--danger); font-size: 18px; margin-bottom: 8px;">Тысячи / мес</div>
+          <div style="width: 120px; height: 60px; background: linear-gradient(180deg, #FCA5A5, #EF4444); border-radius: 12px 12px 0 0;"></div>
+          <div class="bar-label" style="margin-top: 12px; font-size: 13px;">Недвижимость<br><span style="color: var(--danger); font-weight: 600;">Крупный город</span></div>
+        </div>
+        <!-- E-commerce bar -->
+        <div style="text-align: center;">
+          <div class="bar-value" style="color: var(--success); font-size: 18px; margin-bottom: 8px;">Миллионы / день</div>
+          <div style="width: 120px; height: 280px; background: linear-gradient(180deg, #6EE7B7, #10B981); border-radius: 12px 12px 0 0;"></div>
+          <div class="bar-label" style="margin-top: 12px; font-size: 13px;">E-commerce<br><span style="color: var(--success); font-weight: 600;">Где ML работает</span></div>
+        </div>
+        <!-- Airlines bar -->
+        <div style="text-align: center;">
+          <div class="bar-value" style="color: var(--accent); font-size: 18px; margin-bottom: 8px;">Миллионы / день</div>
+          <div style="width: 120px; height: 250px; background: linear-gradient(180deg, #93C5FD, #2563EB); border-radius: 12px 12px 0 0;"></div>
+          <div class="bar-label" style="margin-top: 12px; font-size: 13px;">Авиабилеты<br><span style="color: var(--accent); font-weight: 600;">Где ML работает</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card animate-in delay-3" style="margin-top: 32px; text-align: center; border-color: var(--danger); border-width: 2px;">
+      <p style="font-size: 15px; font-weight: 600; color: var(--danger);">
+        Разница в объёме данных: в 1000+ раз. ML-модели, обученные на тысячах наблюдений, дают статистически незначимые результаты
+      </p>
+    </div>
+    <div class="slide-source">Источники: <a href="https://vc.ru/services/201179-cenoobrazovanie-v-developmente-avtopilot-ili-ruchnoe-upravlenie" target="_blank">Profitbase / vc.ru</a> &middot; <a href="https://www.innodata.ru/press-center/tsena-kak-dvigatel-progressa/" target="_blank">Innodata — «Цена как двигатель прогресса»</a> &middot; <a href="https://www.cnews.ru/articles/2025-03-12_prajs_na_avtopilote_kak_krupnyj" target="_blank">CNews — SberBS</a></div>
+  </div>
+</div>
+
+<!-- =====================================================
+     SLIDE 11 — THREE TYPES OF SYSTEMS
+     ===================================================== -->
+<div class="slide" data-slide="10">
+  <div class="slide-inner">
+    <div class="section-label animate-in">Ограничения ML</div>
+    <h2 class="slide-title animate-in delay-1">Три типа систем и их <span class="danger">ограничения</span></h2>
+
+    <div class="card-grid card-grid-3 animate-in delay-2" style="margin-top: 36px;">
+      <div class="card" style="border-top: 4px solid var(--text-muted);">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+          <span class="pill" style="background: #F3F4F6; color: var(--text-secondary);">Тип 1</span>
+        </div>
+        <h3>Детерминистские</h3>
+        <p style="margin-bottom: 16px;">Жёсткие правила «если-то», статические коэффициенты</p>
+        <div class="pill red" style="margin-bottom: 8px;">Проблема</div>
+        <p style="font-size: 13px;">Полностью игнорируют изменения рыночного спроса. Эффективность сравнима с «ставкой на зеро в казино»</p>
+      </div>
+      <div class="card" style="border-top: 4px solid var(--warning);">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+          <span class="pill yellow">Тип 2</span>
+        </div>
+        <h3>Эмпирические</h3>
+        <p style="margin-bottom: 16px;">Коэффициенты на основе экспертного опыта и бенчмаркинга</p>
+        <div class="pill red" style="margin-bottom: 8px;">Проблема</div>
+        <p style="font-size: 13px;">Статические коэффициенты не оптимизируются для конкретного объекта. Работают лучше, но не оптимально</p>
+      </div>
+      <div class="card" style="border-top: 4px solid var(--danger);">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+          <span class="pill red">Тип 3</span>
+        </div>
+        <h3>Машинное обучение</h3>
+        <p style="margin-bottom: 16px;">Нейросети, градиентный бустинг, ансамбли моделей</p>
+        <div class="pill red" style="margin-bottom: 8px;">Проблема</div>
+        <p style="font-size: 13px;">Ограниченная эффективность прогнозирования макрошоков. «Чёрный ящик» снижает доверие застройщиков</p>
+      </div>
+    </div>
+
+    <div class="card animate-in delay-3" style="margin-top: 24px; background: var(--warning-light); border-color: var(--warning);">
+      <p style="font-size: 15px; text-align: center; font-weight: 500;">
+        Точность определения эластичности спроса по цене эмпирическими и ML-методами: <strong style="color: var(--danger); font-size: 20px;">&#177;25%</strong>
+      </p>
+    </div>
+    <div class="slide-source">Источники: <a href="https://habr.com/ru/articles/886786/" target="_blank">habr.com — Кривая эластичности спроса</a> &middot; <a href="https://urban-media.ru/blog/vybiraem/sverkhpribyl-s-kazhdogo-doma-ot-6-kak-dtso-pomogaet-developeram-uvelichit-zarabotok/" target="_blank">urban-media.ru — ДЦО для девелоперов</a></div>
+  </div>
+</div>
+
+<!-- =====================================================
+     SLIDE 12 — SECTION: MACRO FACTORS
+     ===================================================== -->
+<div class="slide slide-section" data-slide="11">
+  <div class="slide-inner">
+    <div class="section-number">04</div>
+    <div class="section-label animate-in">Раздел четвёртый</div>
+    <h2 class="slide-title animate-in delay-1">Макрофакторы<br>разрушают модели</h2>
+    <p class="slide-subtitle animate-in delay-2">Действия конкурентов и макроэкономические шоки непредсказуемы</p>
+  </div>
+</div>
+
+<!-- =====================================================
+     SLIDE 13 — COMPETITOR DISRUPTIONS
+     ===================================================== -->
+<div class="slide" data-slide="12">
+  <div class="slide-inner">
+    <div class="section-label animate-in">Макрофакторы</div>
+    <h2 class="slide-title animate-in delay-1">Когда конкурент запускает акцию,<br>ваша модель <span class="danger">рушится</span></h2>
+
+    <div class="two-col animate-in delay-2" style="margin-top: 32px;">
+      <div>
+        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--danger);">Непредсказуемые события:</h3>
+        <ul class="check-list">
+          <li><span class="icon red">&#10007;</span><span>Конкурент запускает субсидированную ипотеку 0.1%</span></li>
+          <li><span class="icon red">&#10007;</span><span>ЦБ повышает ключевую ставку на 2 п.п.</span></li>
+          <li><span class="icon red">&#10007;</span><span>Отмена льготной ипотечной программы</span></li>
+          <li><span class="icon red">&#10007;</span><span>Резкое изменение курса рубля</span></li>
+          <li><span class="icon red">&#10007;</span><span>Новый конкурент выходит на рынок с демпингом</span></li>
+          <li><span class="icon red">&#10007;</span><span>Изменение условий проектного финансирования</span></li>
+        </ul>
+      </div>
+      <div>
+        <div class="quote-block" style="border-color: var(--danger); background: linear-gradient(135deg, var(--danger-light) 0%, transparent 100%);">
+          <p>Когда конкуренты запускают акции или предлагают субсидированные ставки, ваша элегантная кривая спроса рушится вместе со всеми расчётами</p>
+          <div class="quote-source" style="color: var(--danger);"><a href="https://habr.com/ru/articles/886786/" target="_blank" style="color: var(--danger);">habr.com</a></div>
+        </div>
+        <div class="card" style="margin-top: 16px;">
+          <h3>Риски конкурентного ценообразования</h3>
+          <ul class="check-list" style="margin-top: 12px;">
+            <li><span class="icon red">&#10007;</span><span><strong>Потеря уникальности</strong> при копировании цен</span></li>
+            <li><span class="icon red">&#10007;</span><span><strong>Ценовые войны</strong> с крупными игроками</span></li>
+            <li><span class="icon red">&#10007;</span><span><strong>Неэффективность</strong> для долгосрочного планирования</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="slide-source">Источники: <a href="https://habr.com/ru/articles/886786/" target="_blank">habr.com — Эластичность спроса</a> &middot; <a href="https://www.corpmsp.ru/blog/kak-razobratsya-s-konkurentnym-tsenoobrazovaniem/" target="_blank">corpmsp.ru — Конкурентное ценообразование</a> &middot; <a href="https://mchep.ru/tpost/dcr0zrk1kt-7-oshibok-tsenoobrazovaniya" target="_blank">МЧиП — 7 ошибок ценообразования</a></div>
+  </div>
+</div>
+
+<!-- =====================================================
+     SLIDE 14 — DEMAND ABSORBS EVERYTHING
+     ===================================================== -->
+<div class="slide" data-slide="13">
+  <div class="slide-inner">
+    <div class="section-label animate-in">Ключевой инсайт</div>
+    <h2 class="slide-title animate-in delay-1" style="text-align: center; max-width: 800px; margin: 0 auto 32px;">Все факторы уже <span class="accent">сублимированы</span> в спросе</h2>
+
+    <div class="animate-in delay-2" style="max-width: 700px; margin: 0 auto;">
+      <!-- Flow diagram -->
+      <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; margin-bottom: 12px;">
+        <div class="flow-item" style="font-size: 12px;">Ставка ЦБ</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-item highlight" rowspan="5" style="grid-row: 1 / 7; display: flex; align-items: center; min-height: 280px; font-size: 16px;">
+          <div>
+            <strong style="font-size: 22px;">СПРОС</strong><br>
+            <span style="opacity: 0.8; font-size: 13px; font-weight: 400;">на ваш объект<br>по вашей цене</span>
+          </div>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; margin-bottom: 12px;">
+        <div class="flow-item" style="font-size: 12px;">Курс рубля</div>
+        <div class="flow-arrow">&rarr;</div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; margin-bottom: 12px;">
+        <div class="flow-item" style="font-size: 12px;">Цены конкурентов</div>
+        <div class="flow-arrow">&rarr;</div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; margin-bottom: 12px;">
+        <div class="flow-item" style="font-size: 12px;">Льготная ипотека</div>
+        <div class="flow-arrow">&rarr;</div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; margin-bottom: 12px;">
+        <div class="flow-item" style="font-size: 12px;">Сезонность</div>
+        <div class="flow-arrow">&rarr;</div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center;">
+        <div class="flow-item" style="font-size: 12px;">Инфляция / доходы</div>
+        <div class="flow-arrow">&rarr;</div>
+      </div>
+    </div>
+
+    <div class="card animate-in delay-3" style="margin-top: 32px; text-align: center; border-color: var(--accent); border-width: 2px; max-width: 700px; margin-left: auto; margin-right: auto;">
+      <p style="font-size: 16px; font-weight: 600; color: var(--accent);">
+        Не нужно оценивать каждый фактор отдельно — достаточно наблюдать за спросом, в котором все эти факторы уже отражены
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     SLIDE 15 — SECTION: DPRICE APPROACH
+     ===================================================== -->
+<div class="slide slide-section" data-slide="14">
+  <div class="slide-inner">
+    <div class="section-number">05</div>
+    <div class="section-label animate-in">Раздел пятый</div>
+    <h2 class="slide-title animate-in delay-1">Подход DPrice:<br>спрос как метрика</h2>
+    <p class="slide-subtitle animate-in delay-2">Оптимальная функция цены, построенная на единственной надёжной переменной</p>
+  </div>
+</div>
+
+<!-- =====================================================
+     SLIDE 16 — DPRICE VS COMPETITORS
+     ===================================================== -->
+<div class="slide" data-slide="15">
+  <div class="slide-inner">
+    <div class="section-label animate-in">Подход DPrice</div>
+    <h2 class="slide-title animate-in delay-1">Сравнение подходов</h2>
+
+    <div class="animate-in delay-2" style="margin-top: 28px;">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Параметр</th>
+            <th class="col-bad">Конкурентное / ML</th>
+            <th class="col-good">DPrice (спрос)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="param">Входные данные</td>
+            <td class="bad">Цены конкурентов (погрешность 1-7%)</td>
+            <td class="good">Собственный спрос (наблюдается напрямую)</td>
+          </tr>
+          <tr>
+            <td class="param">Перенос между ЖК</td>
+            <td class="bad">Требуется — некорректен, каждый ЖК уникален</td>
+            <td class="good">Не требуется — работает на данных конкретного ЖК</td>
+          </tr>
+          <tr>
+            <td class="param">Объём данных</td>
+            <td class="bad">Нужны миллионы транзакций для ML</td>
+            <td class="good">Достаточно реальных продаж одного объекта</td>
+          </tr>
+          <tr>
+            <td class="param">Макроэкономические шоки</td>
+            <td class="bad">Разрушают модель, нужно переобучение</td>
+            <td class="good">Автоматически отражаются в динамике спроса</td>
+          </tr>
+          <tr>
+            <td class="param">Действия конкурентов</td>
+            <td class="bad">Невозможно предсказать и смоделировать</td>
+            <td class="good">Уже учтены — влияют на спрос напрямую</td>
+          </tr>
+          <tr>
+            <td class="param">Прозрачность</td>
+            <td class="bad">Чёрный ящик ML, необъяснимые решения</td>
+            <td class="good">Прозрачная математическая функция</td>
+          </tr>
+          <tr>
+            <td class="param">Старт нового проекта</td>
+            <td class="bad">Нет исторических данных — cold start</td>
+            <td class="good">Работает с первых продаж</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     SLIDE 17 — HOW DPRICE WORKS
+     ===================================================== -->
+<div class="slide" data-slide="16">
+  <div class="slide-inner">
+    <div class="section-label animate-in">Подход DPrice</div>
+    <h2 class="slide-title animate-in delay-1">Как работает <span class="accent">DPrice</span></h2>
+
+    <div class="animate-in delay-2" style="margin-top: 36px;">
+      <div style="display: flex; gap: 16px; align-items: stretch;">
+        <div class="card" style="flex: 1; text-align: center; border-top: 4px solid var(--accent);">
+          <div style="font-size: 32px; font-weight: 900; color: var(--accent); margin-bottom: 8px;">1</div>
+          <h3>Наблюдение</h3>
+          <p style="margin-top: 8px;">Система отслеживает реальный спрос: звонки, бронирования, сделки по текущим ценам</p>
+        </div>
+        <div style="display: flex; align-items: center; font-size: 24px; color: var(--text-muted);">&rarr;</div>
+        <div class="card" style="flex: 1; text-align: center; border-top: 4px solid var(--accent);">
+          <div style="font-size: 32px; font-weight: 900; color: var(--accent); margin-bottom: 8px;">2</div>
+          <h3>Моделирование</h3>
+          <p style="margin-top: 8px;">Строит функцию зависимости спроса от цены для каждого типа квартир</p>
+        </div>
+        <div style="display: flex; align-items: center; font-size: 24px; color: var(--text-muted);">&rarr;</div>
+        <div class="card" style="flex: 1; text-align: center; border-top: 4px solid var(--accent);">
+          <div style="font-size: 32px; font-weight: 900; color: var(--accent); margin-bottom: 8px;">3</div>
+          <h3>Оптимизация</h3>
+          <p style="margin-top: 8px;">Находит математический оптимум: цену, максимизирующую выручку при заданном темпе продаж</p>
+        </div>
+        <div style="display: flex; align-items: center; font-size: 24px; color: var(--text-muted);">&rarr;</div>
+        <div class="card" style="flex: 1; text-align: center; border-top: 4px solid var(--success);">
+          <div style="font-size: 32px; font-weight: 900; color: var(--success); margin-bottom: 8px;">4</div>
+          <h3>Адаптация</h3>
+          <p style="margin-top: 8px;">Непрерывно корректирует цену по мере изменения спроса — любые шоки учтены автоматически</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="stat-row animate-in delay-3">
+      <div class="stat-item">
+        <div class="stat-value" style="color: var(--success);">3–10%</div>
+        <div class="stat-label">Прирост прибыли<br>от выручки</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" style="color: var(--accent);">0</div>
+        <div class="stat-label">Зависимость от данных<br>конкурентов</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" style="color: var(--accent);">&#8734;</div>
+        <div class="stat-label">Адаптивность к макроэкономическим шокам</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     SLIDE 18 — INDUSTRY VALIDATION
+     ===================================================== -->
+<div class="slide" data-slide="17">
+  <div class="slide-inner">
+    <div class="section-label animate-in">Подтверждение рынком</div>
+    <h2 class="slide-title animate-in delay-1">Лидеры рынка <span class="accent">подтверждают</span></h2>
+
+    <div class="card-grid card-grid-3 animate-in delay-2" style="margin-top: 20px; gap: 12px;">
+      <div class="card" style="padding: 20px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+          <div class="pill blue">Profitbase</div>
+        </div>
+        <p style="font-style: italic; margin-bottom: 6px; font-size: 13px; line-height: 1.5;">Данных для ML недостаточно — сделок не так много. Внешних данных много, но они ненадёжны.</p>
+        <p style="font-size: 11px; color: var(--accent);">TOP-20 SaaS РФ, 3000+ клиентов &middot; <a href="https://vc.ru/services/201179-cenoobrazovanie-v-developmente-avtopilot-ili-ruchnoe-upravlenie" target="_blank" style="color: var(--accent);">vc.ru</a></p>
+      </div>
+      <div class="card" style="padding: 20px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+          <div class="pill blue">Uninum</div>
+        </div>
+        <p style="font-style: italic; margin-bottom: 6px; font-size: 13px; line-height: 1.5;">Без прогноза нет ДЦО. Система должна строить прогноз продаж и кривые эластичности спроса.</p>
+        <p style="font-size: 11px; color: var(--accent);">4+ года в ДЦО для девелоперов &middot; <a href="https://uninum.ru/development" target="_blank" style="color: var(--accent);">uninum.ru</a></p>
+      </div>
+      <div class="card" style="padding: 20px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+          <div class="pill blue">Strategy Partners</div>
+        </div>
+        <p style="font-style: italic; margin-bottom: 6px; font-size: 13px; line-height: 1.5;">Новые объекты уникальны — локации и планировки ограничивают использование прошлого опыта.</p>
+        <p style="font-size: 11px; color: var(--accent);">Подразделение Сбера &middot; <a href="https://dynamica.strategy.ru/" target="_blank" style="color: var(--accent);">dynamica.strategy.ru</a></p>
+      </div>
+      <div class="card" style="padding: 20px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+          <div class="pill blue">Innodata / ИНТЕКО</div>
+        </div>
+        <p style="font-style: italic; margin-bottom: 6px; font-size: 13px; line-height: 1.5;">600 признаков, данные Росреестра, курсы, ставки ЦБ. Выигрыш 2.5-3.5% — на грани погрешности.</p>
+        <p style="font-size: 11px; color: var(--accent);">Кейс ИНТЕКО &middot; <a href="https://www.innodata.ru/press-center/tsena-kak-dvigatel-progressa/" target="_blank" style="color: var(--accent);">innodata.ru</a></p>
+      </div>
+      <div class="card" style="padding: 20px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+          <div class="pill blue">SberBS</div>
+        </div>
+        <p style="font-style: italic; margin-bottom: 6px; font-size: 13px; line-height: 1.5;">AI на данных объявлений, ипотеки, гео-маркеров и Дом.РФ. Создаёт искусственный дефицит.</p>
+        <p style="font-size: 11px; color: var(--accent);">Кейс «Восточный Луч» &middot; <a href="https://sberbs.ru/blogs/cases/keys-vostochnyy-luch-kak-krupnyy-zastroyschik-vystroil-tsenoobrazovanie-s-pomoschyu-iskusstvennogo-intellekta" target="_blank" style="color: var(--accent);">sberbs.ru</a></p>
+      </div>
+      <div class="card" style="padding: 20px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+          <div class="pill blue">МЧиП</div>
+        </div>
+        <p style="font-style: italic; margin-bottom: 6px; font-size: 13px; line-height: 1.5;">7 ошибок ценообразования: статические цены, единые цены за метр, боязнь повышения.</p>
+        <p style="font-size: 11px; color: var(--accent);">Манн, Черёмных и Партнёры &middot; <a href="https://mchep.ru/tpost/dcr0zrk1kt-7-oshibok-tsenoobrazovaniya" target="_blank" style="color: var(--accent);">mchep.ru</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     SLIDE 19 — SUMMARY
+     ===================================================== -->
+<div class="slide" data-slide="18">
+  <div class="slide-inner">
+    <div class="section-label animate-in">Резюме</div>
+    <h2 class="slide-title animate-in delay-1">Пять причин выбрать<br><span class="accent">спрос</span> вместо <span class="danger">эмпирик</span></h2>
+
+    <div class="animate-in delay-2" style="margin-top: 36px;">
+      <div style="display: flex; flex-direction: column; gap: 16px; max-width: 800px;">
+        <div style="display: flex; align-items: center; gap: 20px; padding: 20px 24px; background: white; border: 1px solid var(--border); border-radius: var(--radius); border-left: 4px solid var(--accent);">
+          <div style="font-size: 28px; font-weight: 900; color: var(--accent); min-width: 36px;">1</div>
+          <div>
+            <div style="font-weight: 600; font-size: 15px;">Данные о конкурентах ненадёжны</div>
+            <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Погрешность 1-7% обнуляет эффект от системы с ожидаемой выгодой 1-5%</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 20px; padding: 20px 24px; background: white; border: 1px solid var(--border); border-radius: var(--radius); border-left: 4px solid var(--accent);">
+          <div style="font-size: 28px; font-weight: 900; color: var(--accent); min-width: 36px;">2</div>
+          <div>
+            <div style="font-weight: 600; font-size: 15px;">Каждый ЖК уникален</div>
+            <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Перенос данных между проектами даёт некорректные расчёты — это подтверждают и наши конкуренты</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 20px; padding: 20px 24px; background: white; border: 1px solid var(--border); border-radius: var(--radius); border-left: 4px solid var(--accent);">
+          <div style="font-size: 28px; font-weight: 900; color: var(--accent); min-width: 36px;">3</div>
+          <div>
+            <div style="font-weight: 600; font-size: 15px;">ML не работает на малых данных</div>
+            <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Тысячи сделок vs. миллионы в e-commerce — разница в 1000 раз не позволяет обучить надёжную модель</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 20px; padding: 20px 24px; background: white; border: 1px solid var(--border); border-radius: var(--radius); border-left: 4px solid var(--accent);">
+          <div style="font-size: 28px; font-weight: 900; color: var(--accent); min-width: 36px;">4</div>
+          <div>
+            <div style="font-weight: 600; font-size: 15px;">Макрошоки непредсказуемы</div>
+            <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Ставка ЦБ, курс рубля, действия конкурентов разрушают любую статическую модель</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 20px; padding: 20px 24px; background: white; border: 1px solid var(--border); border-radius: var(--radius); border-left: 4px solid var(--success);">
+          <div style="font-size: 28px; font-weight: 900; color: var(--success); min-width: 36px;">5</div>
+          <div>
+            <div style="font-weight: 600; font-size: 15px;">Спрос содержит всё</div>
+            <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Все макро- и микрофакторы уже отражены в реальном спросе — одна надёжная метрика вместо десятка ненадёжных</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     SLIDE 20 — CLOSING
+     ===================================================== -->
+<div class="slide slide-closing" data-slide="19">
+  <div class="slide-inner cover-content">
+    <div class="brand-mark animate-in">DPrice</div>
+    <h1 class="cover-title animate-in delay-1">
+      Математически<br>оптимальное<br>ценообразование
+    </h1>
+    <div class="cover-divider animate-in delay-2"></div>
+    <p class="cover-subtitle animate-in delay-3">
+      Одна надёжная метрика — реальный спрос — вместо десятка ненадёжных эмпирик
+    </p>
+    <div class="animate-in delay-4" style="margin-top: 40px;">
+      <a href="https://dprice.ru" style="display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; background: var(--accent); color: white; text-decoration: none; border-radius: var(--radius-sm); font-weight: 600; font-size: 15px; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 24px rgba(37,99,235,0.3)';" onmouseout="this.style.transform=''; this.style.boxShadow='';">
+        dprice.ru &rarr;
+      </a>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- =====================================================
+     NAVIGATION BAR
+     ===================================================== -->
+<div class="nav-bar">
+  <button class="nav-btn" onclick="prevSlide()" id="prevBtn">
+    <span>&larr;</span> Назад
+  </button>
+  <div class="nav-progress">
+    <div class="nav-progress-fill" id="progressFill"></div>
+  </div>
+  <span class="nav-counter" id="navCounter">1 / 20</span>
+  <div class="nav-progress">
+    <div class="nav-progress-fill" id="progressFill2"></div>
+  </div>
+  <button class="nav-btn" onclick="nextSlide()" id="nextBtn">
+    Далее <span>&rarr;</span>
+  </button>
+</div>
+
+<!-- =====================================================
+     KEYBOARD HINT
+     ===================================================== -->
+<div class="keyboard-hint" id="keyboardHint">
+  &#8592; &#8594; для навигации &middot; F для полноэкранного режима
+</div>
+
+<!-- =====================================================
+     SCRIPTS
+     ===================================================== -->
+<script>
+(function() {
+  const slides = document.querySelectorAll('.slide');
+  const totalSlides = slides.length;
+  let currentSlide = 0;
+  let isAnimating = false;
+
+  const progressFill = document.getElementById('progressFill');
+  const progressFill2 = document.getElementById('progressFill2');
+  const navCounter = document.getElementById('navCounter');
+  const keyboardHint = document.getElementById('keyboardHint');
+
+  function updateUI() {
+    const progress = ((currentSlide + 1) / totalSlides) * 100;
+    progressFill.style.width = progress + '%';
+    progressFill2.style.width = progress + '%';
+    navCounter.textContent = (currentSlide + 1) + ' / ' + totalSlides;
+  }
+
+  function goToSlide(index) {
+    if (isAnimating || index === currentSlide || index < 0 || index >= totalSlides) return;
+    isAnimating = true;
+
+    slides[currentSlide].classList.remove('active');
+    currentSlide = index;
+    slides[currentSlide].classList.add('active');
+    updateUI();
+
+    setTimeout(() => { isAnimating = false; }, 600);
+  }
+
+  function nextSlide() { goToSlide(currentSlide + 1); }
+  function prevSlide() { goToSlide(currentSlide - 1); }
+
+  // Keyboard navigation
+  document.addEventListener('keydown', function(e) {
+    switch(e.key) {
+      case 'ArrowRight':
+      case 'ArrowDown':
+      case ' ':
+      case 'PageDown':
+        e.preventDefault();
+        nextSlide();
+        break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+      case 'PageUp':
+        e.preventDefault();
+        prevSlide();
+        break;
+      case 'Home':
+        e.preventDefault();
+        goToSlide(0);
+        break;
+      case 'End':
+        e.preventDefault();
+        goToSlide(totalSlides - 1);
+        break;
+      case 'f':
+      case 'F':
+        e.preventDefault();
+        if (document.fullscreenElement) {
+          document.exitFullscreen();
+        } else {
+          document.documentElement.requestFullscreen();
+        }
+        break;
+    }
+  });
+
+  // Touch support
+  let touchStartX = 0;
+  let touchStartY = 0;
+  document.addEventListener('touchstart', function(e) {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+
+  document.addEventListener('touchend', function(e) {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+      if (dx < 0) nextSlide();
+      else prevSlide();
+    }
+  }, { passive: true });
+
+  // Make navigation functions global
+  window.nextSlide = nextSlide;
+  window.prevSlide = prevSlide;
+
+  // Show keyboard hint briefly
+  keyboardHint.classList.add('show');
+  setTimeout(() => { keyboardHint.classList.remove('show'); }, 4000);
+
+  // Initial update
+  updateUI();
+})();
+</script>
+
+</body>
+</html>
