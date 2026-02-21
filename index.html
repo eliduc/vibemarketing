@@ -3020,7 +3020,13 @@ async function showFinanceModal(name) {
 }
 
 // ===== DPrice AI Scoring =====
-const dpCache = {};
+const DP_LS_KEY = 'vibeMarketing_dpCache';
+const dpCache = (() => {
+    try { return JSON.parse(localStorage.getItem(DP_LS_KEY) || '{}'); } catch(e) { return {}; }
+})();
+function dpSaveCache() {
+    try { localStorage.setItem(DP_LS_KEY, JSON.stringify(dpCache)); } catch(e) {}
+}
 let DP_MODELS = [
     { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
     { id: 'claude-opus-4-6', label: 'Claude Opus 4.6' },
@@ -3207,6 +3213,7 @@ async function dpRunAnalysis(name) {
         if (resp && resp.ok && resp.data) {
             resp.data.model = model;
             dpCache[cacheKey] = resp.data;
+            dpSaveCache();
             dpOpenModal(dpRenderScore(name, resp.data));
         } else {
             const err = resp?.error || 'Неизвестная ошибка';
@@ -3394,6 +3401,7 @@ async function dpBatchAnalysis(model) {
             if (resp && resp.ok && resp.data) {
                 resp.data.model = model;
                 dpCache[cacheKey] = resp.data;
+                dpSaveCache();
             } else {
                 errors++;
             }
