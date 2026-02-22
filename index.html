@@ -2962,6 +2962,18 @@ function finShowKeySetup(name) {
                 dpSaveSavedModels();
             }
         } catch(e) { console.warn('[Settings] Failed to load keys:', e); }
+        // Auto-fetch Ollama models from browser (GAS can't reach LAN)
+        dpFetchOllamaModelsBrowser().then(ok => {
+            if (ok) {
+                const sel = document.getElementById('ollamaModelSelect2');
+                if (sel) {
+                    const saved = dpSavedModels['ollama'] || '';
+                    sel.innerHTML = dpProviderModels['ollama'].map(m =>
+                        `<option value="${m.id}"${m.id === saved ? ' selected' : ''}>${m.label}</option>`
+                    ).join('');
+                }
+            }
+        });
         if (loadingEl) loadingEl.style.display = 'none';
         if (btn) btn.disabled = false;
         // --- Save handler ---
@@ -3154,14 +3166,10 @@ let dpProviderModels = {
         { id: 'grok-3', label: 'Grok 3' },
         { id: 'grok-3-mini', label: 'Grok 3 Mini' }
     ],
-    ollama: [
-        { id: 'llama4:scout', label: 'Llama 4 Scout' },
-        { id: 'llama4:maverick', label: 'Llama 4 Maverick' },
-        { id: 'qwen3.5', label: 'Qwen 3.5' },
+    ollama: [ // fallback — real list loaded from Ollama /api/tags via browser
         { id: 'qwen3', label: 'Qwen 3' },
         { id: 'llama3.3', label: 'Llama 3.3' },
         { id: 'deepseek-r1', label: 'DeepSeek R1' },
-        { id: 'phi4', label: 'Phi-4' },
         { id: 'mistral', label: 'Mistral' }
     ]
 };
@@ -3471,6 +3479,10 @@ function dpOpenModal(html) {
 
 async function dpFetchModels() {
     try {
+        if (dpActiveProvider === 'ollama') {
+            // Ollama: fetch models directly from browser (GAS can't reach LAN)
+            return await dpFetchOllamaModelsBrowser();
+        }
         const resp = await gsFetch('list_models', { provider: dpActiveProvider });
         if (resp && resp.ok && resp.models) {
             let filtered = resp.models.map(m => ({ id: m.id, label: m.label || m.id }));
@@ -3484,6 +3496,23 @@ async function dpFetchModels() {
         }
         return false;
     } catch(e) { return false; }
+}
+
+async function dpFetchOllamaModelsBrowser() {
+    try {
+        const base = dpOllamaUrl || 'http://localhost:11434';
+        const resp = await fetch(base + '/api/tags');
+        if (!resp.ok) return false;
+        const json = await resp.json();
+        if (!json.models || json.models.length === 0) return false;
+        const models = json.models.map(m => ({ id: m.name, label: m.name }));
+        dpProviderModels['ollama'] = models;
+        if (dpActiveProvider === 'ollama') DP_MODELS = models;
+        return true;
+    } catch(e) {
+        console.warn('[Ollama] Failed to fetch models from browser:', e.message);
+        return false;
+    }
 }
 
 function dpUpdateModelSelect(selectId) {
@@ -3572,6 +3601,12 @@ async function showDPriceModal(name) {
 
     setTimeout(() => {
         dpBindProviderCheckboxes('dpModelSelect');
+        // Auto-fetch Ollama models from browser on modal open
+        if (dpActiveProvider === 'ollama' || dpSelectedProviders.includes('ollama')) {
+            dpFetchOllamaModelsBrowser().then(ok => {
+                if (ok && dpActiveProvider === 'ollama') dpUpdateModelSelect('dpModelSelect');
+            });
+        }
         const runBtn = document.getElementById('dpRunBtn');
         if (runBtn) runBtn.onclick = () => dpRunAnalysis(name);
         const refreshBtn = document.getElementById('dpRefreshModelsBtn');
@@ -3828,6 +3863,21 @@ function dpShowLLMKeySetup(name) {
                 dpSaveSavedModels();
             }
         } catch(e) { console.warn('[LLMKeySetup] Failed to load keys:', e); }
+        // Auto-fetch Ollama models from browser (GAS can't reach LAN)
+        dpFetchOllamaModelsBrowser().then(ok => {
+            if (ok) {
+                const ollamaProv = providers.find(p => p.id === 'ollama');
+                if (ollamaProv) {
+                    const sel = document.getElementById(ollamaProv.inputId + 'Model');
+                    if (sel) {
+                        const saved = dpSavedModels['ollama'] || '';
+                        sel.innerHTML = dpProviderModels['ollama'].map(m =>
+                            `<option value="${m.id}"${m.id === saved ? ' selected' : ''}>${m.label}</option>`
+                        ).join('');
+                    }
+                }
+            }
+        });
         if (loadingEl) loadingEl.style.display = 'none';
         if (btn) btn.disabled = false;
         // --- Save handler ---
