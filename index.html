@@ -1735,9 +1735,9 @@ function build(data, keepCamera) {
         const comp = companies.find(c => c.name === name);
         const txt = name + (comp ? ' [' + comp.region + ']' : '');
         const logo = logoCache[name] || null;
-        const lbl = makeTextPlane(txt, 12, getCSSVar('--label-company'), 260, 'z', 'left', logo);
-        // Position: x = well left of grid to avoid overlap with grid mesh, y = row center, z = start of depth
-        lbl.position.set(-8, i * CELL + CELL / 2, 0);
+        const lbl = makeTextPlane(txt, 12, getCSSVar('--label-company'), 260, 'z', 'right', logo);
+        // Position: x = left of grid, y = row center, z = right edge aligned to -1.5 (gap before grid at z=0)
+        lbl.position.set(-8, i * CELL + CELL / 2, -1.5);
         scene.add(lbl); labelMeshes.push(lbl);
         lbl.userData.type = 'axisLabel';
     });
