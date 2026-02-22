@@ -2890,10 +2890,37 @@ function finShowKeySetup(name) {
             <label style="margin-top:8px;display:block">API-ключ Checko</label>
             <input type="text" id="checkoKeyInput" placeholder="Вставьте ключ Checko (необязательно)..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--text);font-size:14px;margin-top:4px">
 
-            <p style="margin-top:16px"><b>3. Anthropic</b> — AI-анализ DPrice (оценка восприимчивости компаний)</p>
-            <p style="font-size:12px;color:var(--dim)"><a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a> → Settings → API Keys → Create Key.</p>
-            <label style="margin-top:8px;display:block">API-ключ Anthropic</label>
-            <input type="text" id="anthropicKeyInput2" placeholder="sk-ant-... (необязательно)" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--text);font-size:14px;margin-top:4px">
+            <div style="margin-top:16px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--hover-bg)">
+                <p style="margin:0 0 6px"><b>3. LLM-провайдеры</b> — AI-анализ DPrice</p>
+                <p style="font-size:11px;color:var(--dim);margin:0 0 8px">Введите ключи и выберите активного провайдера (радиокнопкой):</p>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                        <input type="radio" name="settingsLlmProvider" value="anthropic" ${dpActiveProvider === 'anthropic' ? 'checked' : ''} style="accent-color:var(--accent)">
+                        <span style="width:110px"><b>Anthropic</b></span>
+                        <input type="text" id="anthropicKeyInput2" placeholder="sk-ant-..." style="flex:1;padding:5px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:12px">
+                    </label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                        <input type="radio" name="settingsLlmProvider" value="openai" ${dpActiveProvider === 'openai' ? 'checked' : ''} style="accent-color:var(--accent)">
+                        <span style="width:110px"><b>OpenAI</b></span>
+                        <input type="text" id="openaiKeyInput2" placeholder="sk-..." style="flex:1;padding:5px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:12px">
+                    </label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                        <input type="radio" name="settingsLlmProvider" value="gemini" ${dpActiveProvider === 'gemini' ? 'checked' : ''} style="accent-color:var(--accent)">
+                        <span style="width:110px"><b>Google Gemini</b></span>
+                        <input type="text" id="geminiKeyInput2" placeholder="AI..." style="flex:1;padding:5px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:12px">
+                    </label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                        <input type="radio" name="settingsLlmProvider" value="grok" ${dpActiveProvider === 'grok' ? 'checked' : ''} style="accent-color:var(--accent)">
+                        <span style="width:110px"><b>xAI Grok</b></span>
+                        <input type="text" id="grokKeyInput2" placeholder="xai-..." style="flex:1;padding:5px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:12px">
+                    </label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                        <input type="radio" name="settingsLlmProvider" value="ollama" ${dpActiveProvider === 'ollama' ? 'checked' : ''} style="accent-color:var(--accent)">
+                        <span style="width:110px"><b>Ollama</b></span>
+                        <input type="text" id="ollamaUrlInput2" placeholder="http://localhost:11434" style="flex:1;padding:5px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:12px">
+                    </label>
+                </div>
+            </div>
 
             <div id="dadataKeyError" style="color:#e74c3c;font-size:12px;margin-top:8px;display:none"></div>
         </div>
@@ -2908,6 +2935,11 @@ function finShowKeySetup(name) {
             const dadataKey = document.getElementById('dadataKeyInput')?.value?.trim();
             const checkoKey = document.getElementById('checkoKeyInput')?.value?.trim();
             const anthropicKey = document.getElementById('anthropicKeyInput2')?.value?.trim();
+            const openaiKey = document.getElementById('openaiKeyInput2')?.value?.trim();
+            const geminiKey = document.getElementById('geminiKeyInput2')?.value?.trim();
+            const grokKey = document.getElementById('grokKeyInput2')?.value?.trim();
+            const ollamaUrl = document.getElementById('ollamaUrlInput2')?.value?.trim();
+            const selectedProvider = document.querySelector('input[name="settingsLlmProvider"]:checked')?.value;
             if (!dadataKey || dadataKey.length < 10) {
                 const errEl = document.getElementById('dadataKeyError');
                 if (errEl) { errEl.textContent = 'Введите корректный API-ключ DaData'; errEl.style.display = ''; }
@@ -2918,15 +2950,18 @@ function finShowKeySetup(name) {
                 const creds = adminGetCallerCredentials();
                 const resp = await gsFetch('set_dadata_key', { key: dadataKey, ...creds });
                 if (resp && resp.ok) {
-                    // Save checko key if provided
-                    if (checkoKey && checkoKey.length >= 5) {
-                        await gsFetch('set_checko_key', { key: checkoKey, ...creds });
+                    if (checkoKey && checkoKey.length >= 5) await gsFetch('set_checko_key', { key: checkoKey, ...creds });
+                    if (anthropicKey) await gsFetch('set_anthropic_key', { key: anthropicKey, ...creds });
+                    if (openaiKey) await gsFetch('set_openai_key', { key: openaiKey, ...creds });
+                    if (geminiKey) await gsFetch('set_gemini_key', { key: geminiKey, ...creds });
+                    if (grokKey) await gsFetch('set_grok_key', { key: grokKey, ...creds });
+                    if (ollamaUrl) await gsFetch('set_ollama_url', { url: ollamaUrl, ...creds });
+                    if (selectedProvider) {
+                        await gsFetch('set_active_provider', { provider: selectedProvider, ...creds });
+                        dpActiveProvider = selectedProvider;
+                        localStorage.setItem('dp_provider', dpActiveProvider);
+                        DP_MODELS = dpProviderModels[dpActiveProvider] || dpProviderModels.anthropic;
                     }
-                    // Save anthropic key if provided
-                    if (anthropicKey && anthropicKey.startsWith('sk-')) {
-                        await gsFetch('set_anthropic_key', { key: anthropicKey, ...creds });
-                    }
-                    // Keys saved, now retry finance
                     if (name) showFinanceModal(name);
                     else { closeFormModal(); document.getElementById('formModal')?.classList.remove('fin-modal'); }
                 } else {
@@ -3027,11 +3062,45 @@ const dpCache = (() => {
 function dpSaveCache() {
     try { localStorage.setItem(DP_LS_KEY, JSON.stringify(dpCache)); } catch(e) {}
 }
-let DP_MODELS = [
-    { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
-    { id: 'claude-opus-4-6', label: 'Claude Opus 4.6' },
-    { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' }
-];
+const LLM_PROVIDERS = {
+    anthropic: { label: 'Anthropic Claude', keyAction: 'set_anthropic_key', keyPlaceholder: 'sk-ant-...', keyUrl: 'https://console.anthropic.com/settings/keys' },
+    openai:    { label: 'OpenAI ChatGPT', keyAction: 'set_openai_key', keyPlaceholder: 'sk-...', keyUrl: 'https://platform.openai.com/api-keys' },
+    gemini:    { label: 'Google Gemini', keyAction: 'set_gemini_key', keyPlaceholder: 'AI...', keyUrl: 'https://aistudio.google.com/app/apikey' },
+    grok:      { label: 'xAI Grok', keyAction: 'set_grok_key', keyPlaceholder: 'xai-...', keyUrl: 'https://console.x.ai/' },
+    ollama:    { label: 'Ollama (локальный)', keyAction: 'set_ollama_url', keyPlaceholder: 'http://localhost:11434', keyUrl: 'https://ollama.com' }
+};
+let dpActiveProvider = localStorage.getItem('dp_provider') || 'anthropic';
+let dpProviderModels = {
+    anthropic: [
+        { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
+        { id: 'claude-opus-4-6', label: 'Claude Opus 4.6' },
+        { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' }
+    ],
+    openai: [
+        { id: 'gpt-4o', label: 'GPT-4o' },
+        { id: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+        { id: 'o3-mini', label: 'o3-mini' }
+    ],
+    gemini: [
+        { id: 'gemini-2.5-pro-preview-06-05', label: 'Gemini 2.5 Pro' },
+        { id: 'gemini-2.5-flash-preview-05-20', label: 'Gemini 2.5 Flash' },
+        { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' }
+    ],
+    grok: [
+        { id: 'grok-3', label: 'Grok 3' },
+        { id: 'grok-3-mini', label: 'Grok 3 Mini' }
+    ],
+    ollama: [
+        { id: 'llama3.1', label: 'Llama 3.1' },
+        { id: 'mistral', label: 'Mistral' },
+        { id: 'qwen2.5', label: 'Qwen 2.5' }
+    ]
+};
+let DP_MODELS = dpProviderModels[dpActiveProvider] || dpProviderModels.anthropic;
+function dpGetDefaultModel() {
+    const d = { anthropic:'claude-sonnet-4-6', openai:'gpt-4o', gemini:'gemini-2.0-flash', grok:'grok-3', ollama:'llama3.1' };
+    return d[dpActiveProvider] || 'claude-sonnet-4-6';
+}
 
 function dpScoreColor(score) {
     if (score <= 3) return '#e74c3c';
@@ -3074,7 +3143,9 @@ function dpRenderScore(name, data) {
 
     const summaryHtml = data.summary ? `<div class="dp-summary">${escHtml(data.summary)}</div>` : '';
     const recHtml = data.recommendation ? `<div class="dp-recommendation">${escHtml(data.recommendation)}</div>` : '';
-    const modelLabel = DP_MODELS.find(m => m.id === data.model)?.label || data.model || '';
+    const allModels = Object.values(dpProviderModels).flat();
+    const modelLabel = allModels.find(m => m.id === data.model)?.label || data.model || '';
+    const providerLabel = LLM_PROVIDERS[data.provider]?.label || data.provider || 'AI';
 
     return `
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px">
@@ -3096,7 +3167,7 @@ function dpRenderScore(name, data) {
         ${summaryHtml}
         ${recHtml}
         <div class="fin-source">
-            Анализ: Anthropic Claude AI | <a href="https://dprice.ru" target="_blank">dprice.ru</a>
+            Анализ: ${escHtml(providerLabel)} | <a href="https://dprice.ru" target="_blank">dprice.ru</a>
             ${data._sources ? `<br>Источники: финансы ${data._sources.finance ? '✅' : '❌'} · сайт ${data._sources.website > 0 ? '✅ ' + data._sources.website + ' зн.' : '❌'} · новости ${data._sources.news > 0 ? '✅ ' + data._sources.news + ' зн.' : '❌ не найдены'}${data._sources.context > 0 ? ' · контекст ✅' : ''}` : ''}
         </div>
     `;
@@ -3115,19 +3186,52 @@ function dpOpenModal(html) {
 
 async function dpFetchModels() {
     try {
-        const resp = await gsFetch('list_models', {});
+        const resp = await gsFetch('list_models', { provider: dpActiveProvider });
         if (resp && resp.ok && resp.models) {
-            DP_MODELS = resp.models
-                .filter(m => !m.id.includes('haiku-3') && !m.id.includes('claude-2') && !m.id.includes('claude-1'))
-                .map(m => ({ id: m.id, label: m.label }));
-            if (DP_MODELS.length === 0) DP_MODELS = [{ id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' }];
+            let filtered = resp.models.map(m => ({ id: m.id, label: m.label || m.id }));
+            if (dpActiveProvider === 'anthropic') {
+                filtered = filtered.filter(m => !m.id.includes('haiku-3') && !m.id.includes('claude-2') && !m.id.includes('claude-1'));
+            }
+            if (filtered.length === 0) filtered = [{ id: dpGetDefaultModel(), label: dpGetDefaultModel() }];
+            dpProviderModels[dpActiveProvider] = filtered;
+            DP_MODELS = filtered;
             return true;
         }
         return false;
     } catch(e) { return false; }
 }
 
+function dpUpdateModelSelect(selectId) {
+    DP_MODELS = dpProviderModels[dpActiveProvider] || dpProviderModels.anthropic;
+    const sel = document.getElementById(selectId);
+    if (sel) {
+        sel.innerHTML = DP_MODELS.map((m, i) =>
+            `<option value="${m.id}"${i === 0 ? ' selected' : ''}>${escHtml(m.label)}</option>`
+        ).join('');
+    }
+}
+
+function dpProviderRadioHtml() {
+    return Object.entries(LLM_PROVIDERS).map(([key, p]) =>
+        `<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;padding:3px 8px;border-radius:4px;transition:background .15s">
+            <input type="radio" name="dpProvider" value="${key}" ${key === dpActiveProvider ? 'checked' : ''} style="accent-color:var(--accent)">
+            ${escHtml(p.label)}
+        </label>`
+    ).join('');
+}
+
+function dpBindProviderRadio(modelSelectId) {
+    document.querySelectorAll('input[name="dpProvider"]').forEach(radio => {
+        radio.onchange = () => {
+            dpActiveProvider = radio.value;
+            localStorage.setItem('dp_provider', dpActiveProvider);
+            dpUpdateModelSelect(modelSelectId);
+        };
+    });
+}
+
 async function showDPriceModal(name) {
+    DP_MODELS = dpProviderModels[dpActiveProvider] || dpProviderModels.anthropic;
     const modelOptions = DP_MODELS.map((m, i) =>
         `<option value="${m.id}"${i === 0 ? ' selected' : ''}>${escHtml(m.label)}</option>`
     ).join('');
@@ -3137,11 +3241,15 @@ async function showDPriceModal(name) {
             <h2>🎯 DPrice: ${escHtml(name)}</h2>
             <div class="fin-sub">AI-оценка восприимчивости к продукту DPrice</div>
         </div>
+        <div style="margin-bottom:8px;padding:6px 8px;background:var(--hover-bg);border-radius:6px">
+            <div style="font-size:10px;font-weight:600;color:var(--dim);margin-bottom:4px">LLM-провайдер:</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px 10px">${dpProviderRadioHtml()}</div>
+        </div>
         <div class="dp-model-select">
             <label>Модель:</label>
             <select id="dpModelSelect">${modelOptions}</select>
             <button class="fm-ok" id="dpRunBtn" style="padding:4px 14px;font-size:12px">Анализировать</button>
-            <button id="dpRefreshModelsBtn" title="Загрузить актуальные модели с Anthropic" style="padding:3px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--dim);cursor:pointer">🔄</button>
+            <button id="dpRefreshModelsBtn" title="Загрузить актуальные модели" style="padding:3px 8px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--dim);cursor:pointer">🔄</button>
         </div>
         <div style="margin-bottom:8px">
             <label style="font-size:11px;font-weight:600;color:var(--dim);display:block;margin-bottom:3px">Дополнительный контекст (необязательно):</label>
@@ -3151,7 +3259,7 @@ async function showDPriceModal(name) {
         <div id="dpResultArea">
             <div class="fin-not-found" style="padding:14px 0">
                 <p>Нажмите «Анализировать» для запуска.</p>
-                <p style="font-size:11px;color:var(--dim)">Claude проанализирует финансы, сайт и новости компании.</p>
+                <p style="font-size:11px;color:var(--dim)">AI проанализирует финансы, сайт и новости компании.</p>
             </div>
         </div>
         <div class="fm-actions" style="margin-top:10px">
@@ -3160,6 +3268,7 @@ async function showDPriceModal(name) {
     `);
 
     setTimeout(() => {
+        dpBindProviderRadio('dpModelSelect');
         const runBtn = document.getElementById('dpRunBtn');
         if (runBtn) runBtn.onclick = () => dpRunAnalysis(name);
         const refreshBtn = document.getElementById('dpRefreshModelsBtn');
@@ -3168,12 +3277,7 @@ async function showDPriceModal(name) {
             refreshBtn.textContent = '⏳';
             const ok = await dpFetchModels();
             if (ok) {
-                const sel = document.getElementById('dpModelSelect');
-                if (sel) {
-                    sel.innerHTML = DP_MODELS.map((m, i) =>
-                        `<option value="${m.id}"${i === 0 ? ' selected' : ''}>${escHtml(m.label)}</option>`
-                    ).join('');
-                }
+                dpUpdateModelSelect('dpModelSelect');
                 refreshBtn.textContent = '✅';
                 setTimeout(() => { refreshBtn.textContent = '🔄'; refreshBtn.disabled = false; }, 1500);
             } else {
@@ -3186,101 +3290,126 @@ async function showDPriceModal(name) {
 
 async function dpRunAnalysis(name) {
     const modelSelect = document.getElementById('dpModelSelect');
-    const model = modelSelect ? modelSelect.value : DP_MODELS[0].id;
+    const model = modelSelect ? modelSelect.value : (DP_MODELS[0]?.id || dpGetDefaultModel());
     const contextInput = document.getElementById('dpCustomContext');
     const customContext = contextInput ? contextInput.value.trim() : '';
     const resultArea = document.getElementById('dpResultArea');
     if (!resultArea) return;
 
-    // Check cache (include context in key)
-    const cacheKey = name + '|' + model + '|' + customContext;
+    // Check cache (include provider in key)
+    const cacheKey = name + '|' + dpActiveProvider + '|' + model + '|' + customContext;
     if (dpCache[cacheKey]) {
         dpOpenModal(dpRenderScore(name, dpCache[cacheKey]));
         return;
     }
 
+    const provLabel = LLM_PROVIDERS[dpActiveProvider]?.label || dpActiveProvider;
     resultArea.innerHTML = `
         <div class="fin-loading">
             <div class="fin-spinner"></div>
-            <div style="margin-top:12px">Сбор данных и анализ...<br><span style="font-size:11px;color:var(--dim)">Это может занять 15-30 секунд</span></div>
+            <div style="margin-top:12px">Сбор данных и анализ (${escHtml(provLabel)})...<br><span style="font-size:11px;color:var(--dim)">Это может занять 15-30 секунд</span></div>
         </div>
     `;
 
     try {
-        const params = { name, model };
+        const params = { name, model, provider: dpActiveProvider };
         if (customContext) params.context = customContext;
         const resp = await gsFetch('dprice_score', params);
         if (resp && resp.ok && resp.data) {
             resp.data.model = model;
+            resp.data.provider = dpActiveProvider;
             dpCache[cacheKey] = resp.data;
             dpSaveCache();
             dpOpenModal(dpRenderScore(name, resp.data));
         } else {
             const err = resp?.error || 'Неизвестная ошибка';
-            if (err === 'NO_ANTHROPIC_KEY') {
-                dpShowKeySetup(name);
+            if (err.startsWith('NO_') && err.endsWith('_KEY')) {
+                dpShowLLMKeySetup(name);
             } else {
                 resultArea.innerHTML = `<div class="fin-not-found"><p>Ошибка: ${escHtml(err)}</p></div>`;
             }
         }
     } catch(e) {
-        if (e.message === 'NO_ANTHROPIC_KEY') {
-            dpShowKeySetup(name);
+        if (e.message && e.message.startsWith('NO_') && e.message.endsWith('_KEY')) {
+            dpShowLLMKeySetup(name);
         } else {
             resultArea.innerHTML = `<div class="fin-not-found"><p>Ошибка: ${escHtml(e.message)}</p></div>`;
         }
     }
 }
 
-function dpShowKeySetup(name) {
+function dpShowKeySetup(name) { dpShowLLMKeySetup(name); }
+
+function dpShowLLMKeySetup(name) {
     const isAdmin = (() => {
         try { return JSON.parse(sessionStorage.getItem('vibeAuth') || '{}').role === 'admin'; } catch(e) { return false; }
     })();
     if (!isAdmin) {
         dpOpenModal(`
             <div class="fin-header"><h2>🎯 DPrice</h2></div>
-            <div class="fin-not-found"><p>Для AI-анализа необходим API-ключ Anthropic. Обратитесь к администратору.</p></div>
+            <div class="fin-not-found"><p>Для AI-анализа необходим API-ключ. Обратитесь к администратору.</p></div>
             <div class="fm-actions" style="margin-top:10px"><button class="fm-ok" id="fmCancel">OK</button></div>
         `);
         return;
     }
+    const providers = [
+        { id:'anthropic', name:'Anthropic Claude', url:'https://console.anthropic.com/settings/keys', inputId:'llmKeyAnthropic', ph:'sk-ant-...' },
+        { id:'openai', name:'OpenAI ChatGPT', url:'https://platform.openai.com/api-keys', inputId:'llmKeyOpenai', ph:'sk-...' },
+        { id:'gemini', name:'Google Gemini', url:'https://aistudio.google.com/app/apikey', inputId:'llmKeyGemini', ph:'AI...' },
+        { id:'grok', name:'xAI Grok', url:'https://console.x.ai/', inputId:'llmKeyGrok', ph:'xai-...' },
+        { id:'ollama', name:'Ollama (локальный)', url:'https://ollama.com', inputId:'llmUrlOllama', ph:'http://localhost:11434' }
+    ];
+    const inputsHtml = providers.map(p => `
+        <div style="margin-top:8px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--hover-bg)">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+                <input type="radio" name="llmActiveProvider" value="${p.id}" ${p.id === dpActiveProvider ? 'checked' : ''} style="accent-color:var(--accent)">
+                <b>${p.name}</b>
+            </label>
+            <div style="font-size:10px;color:var(--dim);margin:2px 0 4px 22px"><a href="${p.url}" target="_blank">Получить ключ →</a></div>
+            <input type="text" id="${p.inputId}" placeholder="${p.ph}" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:12px">
+        </div>
+    `).join('');
+
     dpOpenModal(`
-        <div class="fin-header"><h2>🔑 Настройка Anthropic API</h2></div>
+        <div class="fin-header"><h2>🔑 Настройка LLM-провайдеров</h2></div>
         <div class="fin-key-setup">
-            <p>Для AI-анализа нужен API-ключ <a href="https://console.anthropic.com/settings/keys" target="_blank">Anthropic</a>.</p>
-            <p style="font-size:12px;color:var(--dim)">Зарегистрируйтесь на console.anthropic.com → Settings → API Keys → Create Key.</p>
-            <label style="margin-top:12px;display:block">API-ключ Anthropic</label>
-            <input type="text" id="anthropicKeyInput" placeholder="sk-ant-..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--text);font-size:14px;margin-top:4px">
-            <div id="anthropicKeyError" style="color:#e74c3c;font-size:12px;margin-top:4px;display:none"></div>
+            <p style="font-size:12px;color:var(--dim)">Введите ключи для нужных провайдеров и выберите активный:</p>
+            ${inputsHtml}
+            <div id="llmKeyError" style="color:#e74c3c;font-size:12px;margin-top:8px;display:none"></div>
         </div>
         <div class="fm-actions" style="margin-top:14px">
-            <button class="fm-ok" id="anthropicKeySave">Сохранить</button>
+            <button class="fm-ok" id="llmKeySave">Сохранить</button>
             <button class="fm-cancel" id="fmCancel">Отмена</button>
         </div>
     `);
     setTimeout(() => {
-        const btn = document.getElementById('anthropicKeySave');
+        const btn = document.getElementById('llmKeySave');
         if (btn) btn.onclick = async () => {
-            const key = document.getElementById('anthropicKeyInput')?.value?.trim();
-            if (!key || !key.startsWith('sk-')) {
-                const errEl = document.getElementById('anthropicKeyError');
-                if (errEl) { errEl.textContent = 'Ключ должен начинаться с sk-'; errEl.style.display = ''; }
-                return;
-            }
             btn.disabled = true; btn.textContent = 'Сохранение...';
             try {
                 const creds = adminGetCallerCredentials();
-                const resp = await gsFetch('set_anthropic_key', { key, ...creds });
-                if (resp && resp.ok) {
-                    if (name) showDPriceModal(name);
-                    else { closeFormModal(); document.getElementById('formModal')?.classList.remove('fin-modal', 'dp-modal'); }
-                } else {
-                    const errEl = document.getElementById('anthropicKeyError');
-                    if (errEl) { errEl.textContent = resp?.error || 'Ошибка'; errEl.style.display = ''; }
-                    btn.disabled = false; btn.textContent = 'Сохранить';
-                }
+                const selectedProvider = document.querySelector('input[name="llmActiveProvider"]:checked')?.value || 'anthropic';
+                const anthropicKey = document.getElementById('llmKeyAnthropic')?.value?.trim();
+                const openaiKey = document.getElementById('llmKeyOpenai')?.value?.trim();
+                const geminiKey = document.getElementById('llmKeyGemini')?.value?.trim();
+                const grokKey = document.getElementById('llmKeyGrok')?.value?.trim();
+                const ollamaUrl = document.getElementById('llmUrlOllama')?.value?.trim();
+
+                if (anthropicKey) await gsFetch('set_anthropic_key', { key: anthropicKey, ...creds });
+                if (openaiKey) await gsFetch('set_openai_key', { key: openaiKey, ...creds });
+                if (geminiKey) await gsFetch('set_gemini_key', { key: geminiKey, ...creds });
+                if (grokKey) await gsFetch('set_grok_key', { key: grokKey, ...creds });
+                if (ollamaUrl) await gsFetch('set_ollama_url', { url: ollamaUrl, ...creds });
+                await gsFetch('set_active_provider', { provider: selectedProvider, ...creds });
+
+                dpActiveProvider = selectedProvider;
+                localStorage.setItem('dp_provider', dpActiveProvider);
+                DP_MODELS = dpProviderModels[dpActiveProvider] || dpProviderModels.anthropic;
+
+                if (name) showDPriceModal(name);
+                else { closeFormModal(); document.getElementById('formModal')?.classList.remove('fin-modal', 'dp-modal'); }
             } catch(e) {
-                const errEl = document.getElementById('anthropicKeyError');
+                const errEl = document.getElementById('llmKeyError');
                 if (errEl) { errEl.textContent = e.message; errEl.style.display = ''; }
                 btn.disabled = false; btn.textContent = 'Сохранить';
             }
@@ -3292,6 +3421,11 @@ function dpShowKeySetup(name) {
 let dpBatchRunning = false;
 
 function dpGetCachedScore(name) {
+    // Prefer cache from current provider
+    for (const key of Object.keys(dpCache)) {
+        if (key.startsWith(name + '|' + dpActiveProvider + '|')) return dpCache[key];
+    }
+    // Fall back to any provider
     for (const key of Object.keys(dpCache)) {
         if (key.startsWith(name + '|')) return dpCache[key];
     }
@@ -3307,6 +3441,7 @@ function dpBatchStart() {
         alert('Анализ уже запущен');
         return;
     }
+    DP_MODELS = dpProviderModels[dpActiveProvider] || dpProviderModels.anthropic;
     const modelOptions = DP_MODELS.map((m, i) =>
         `<option value="${m.id}"${i === 0 ? ' selected' : ''}>${escHtml(m.label)}</option>`
     ).join('');
@@ -3315,6 +3450,10 @@ function dpBatchStart() {
         <div class="fin-header" style="margin-bottom:10px">
             <h2>🎯 DPrice — анализ всех компаний</h2>
             <div class="fin-sub">Последовательный AI-анализ ${curData.companies.length} компаний</div>
+        </div>
+        <div style="margin-bottom:8px;padding:6px 8px;background:var(--hover-bg);border-radius:6px">
+            <div style="font-size:10px;font-weight:600;color:var(--dim);margin-bottom:4px">LLM-провайдер:</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px 10px">${dpProviderRadioHtml()}</div>
         </div>
         <div class="dp-model-select">
             <label>Модель:</label>
@@ -3329,6 +3468,7 @@ function dpBatchStart() {
     `);
 
     setTimeout(() => {
+        dpBindProviderRadio('dpBatchModelSelect');
         const runBtn = document.getElementById('dpBatchRunBtn');
         if (runBtn) runBtn.onclick = () => {
             const sel = document.getElementById('dpBatchModelSelect');
@@ -3342,10 +3482,7 @@ function dpBatchStart() {
             refreshBtn.disabled = true; refreshBtn.textContent = '⏳';
             const ok = await dpFetchModels();
             if (ok) {
-                const sel = document.getElementById('dpBatchModelSelect');
-                if (sel) sel.innerHTML = DP_MODELS.map((m, i) =>
-                    `<option value="${m.id}"${i === 0 ? ' selected' : ''}>${escHtml(m.label)}</option>`
-                ).join('');
+                dpUpdateModelSelect('dpBatchModelSelect');
                 refreshBtn.textContent = '✅';
                 setTimeout(() => { refreshBtn.textContent = '🔄'; refreshBtn.disabled = false; }, 1500);
             } else {
@@ -3387,7 +3524,7 @@ async function dpBatchAnalysis(model) {
     for (let i = 0; i < total; i++) {
         if (cancelled) break;
         const name = companies[i].name;
-        const cacheKey = name + '|' + model + '|';
+        const cacheKey = name + '|' + dpActiveProvider + '|' + model + '|';
 
         curEl.textContent = i + 1;
         nameEl.textContent = name;
@@ -3396,10 +3533,11 @@ async function dpBatchAnalysis(model) {
         if (dpCache[cacheKey]) continue;
 
         try {
-            console.log('[DPBatch] Analyzing:', name, 'model:', model);
-            const resp = await gsFetch('dprice_score', { name, model });
+            console.log('[DPBatch] Analyzing:', name, 'provider:', dpActiveProvider, 'model:', model);
+            const resp = await gsFetch('dprice_score', { name, model, provider: dpActiveProvider });
             if (resp && resp.ok && resp.data) {
                 resp.data.model = model;
+                resp.data.provider = dpActiveProvider;
                 dpCache[cacheKey] = resp.data;
                 dpSaveCache();
             } else {
@@ -4356,7 +4494,7 @@ let gsInterval = parseInt(localStorage.getItem('vibeGS_interval')) || 30;
 let gsPollTimer = null;
 let gsDataHash = ''; // hash of last known remote data
 
-const GS_APPS_SCRIPT_CODE = `// VibeMarketing — Google Sheets Backend v13
+const GS_APPS_SCRIPT_CODE = `// VibeMarketing — Google Sheets Backend v14
 // Вставьте этот код в Apps Script вашей Google Таблицы
 // Таблица должна содержать 4 листа: companies, activities, meta, users
 
@@ -4521,23 +4659,135 @@ function doGet(e) {
     return jsonResp({ok:true});
   }
 
+  if (action === 'set_openai_key') {
+    var d = p.d ? JSON.parse(p.d) : {};
+    if (!verifyAdmin(d.callerLogin, d.callerPassHash))
+      return jsonResp({ok:false, error:'access denied'});
+    if (!d.key) return jsonResp({ok:false, error:'no key provided'});
+    setMetaKey('openaiKey', d.key.trim());
+    return jsonResp({ok:true});
+  }
+
+  if (action === 'set_gemini_key') {
+    var d = p.d ? JSON.parse(p.d) : {};
+    if (!verifyAdmin(d.callerLogin, d.callerPassHash))
+      return jsonResp({ok:false, error:'access denied'});
+    if (!d.key) return jsonResp({ok:false, error:'no key provided'});
+    setMetaKey('geminiKey', d.key.trim());
+    return jsonResp({ok:true});
+  }
+
+  if (action === 'set_grok_key') {
+    var d = p.d ? JSON.parse(p.d) : {};
+    if (!verifyAdmin(d.callerLogin, d.callerPassHash))
+      return jsonResp({ok:false, error:'access denied'});
+    if (!d.key) return jsonResp({ok:false, error:'no key provided'});
+    setMetaKey('grokKey', d.key.trim());
+    return jsonResp({ok:true});
+  }
+
+  if (action === 'set_ollama_url') {
+    var d = p.d ? JSON.parse(p.d) : {};
+    if (!verifyAdmin(d.callerLogin, d.callerPassHash))
+      return jsonResp({ok:false, error:'access denied'});
+    setMetaKey('ollamaUrl', (d.url || '').trim());
+    return jsonResp({ok:true});
+  }
+
+  if (action === 'set_active_provider') {
+    var d = p.d ? JSON.parse(p.d) : {};
+    if (!verifyAdmin(d.callerLogin, d.callerPassHash))
+      return jsonResp({ok:false, error:'access denied'});
+    var validProviders = ['anthropic','openai','gemini','grok','ollama'];
+    if (validProviders.indexOf(d.provider) < 0) return jsonResp({ok:false, error:'invalid provider'});
+    setMetaKey('activeProvider', d.provider);
+    return jsonResp({ok:true});
+  }
+
+  if (action === 'get_llm_keys_status') {
+    var d = p.d ? JSON.parse(p.d) : {};
+    if (!verifyAdmin(d.callerLogin, d.callerPassHash))
+      return jsonResp({ok:false, error:'access denied'});
+    return jsonResp({ok:true,
+      anthropic: !!getMetaKey('anthropicKey'),
+      openai: !!getMetaKey('openaiKey'),
+      gemini: !!getMetaKey('geminiKey'),
+      grok: !!getMetaKey('grokKey'),
+      ollamaUrl: getMetaKey('ollamaUrl') || '',
+      activeProvider: getMetaKey('activeProvider') || 'anthropic'
+    });
+  }
+
   if (action === 'list_models') {
-    var anthropicKey = getMetaKey('anthropicKey');
-    if (!anthropicKey) return jsonResp({ok:false, error:'NO_ANTHROPIC_KEY'});
+    var d = p.d ? JSON.parse(p.d) : {};
+    var lmProvider = d.provider || getMetaKey('activeProvider') || 'anthropic';
     try {
-      var resp = UrlFetchApp.fetch('https://api.anthropic.com/v1/models?limit=50', {
-        method: 'get',
-        headers: {'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01'},
-        muteHttpExceptions: true
-      });
-      if (resp.getResponseCode() !== 200) throw new Error('API error: ' + resp.getResponseCode());
-      var json = JSON.parse(resp.getContentText());
-      var models = [];
-      for (var i = 0; i < json.data.length; i++) {
-        var m = json.data[i];
-        models.push({id: m.id, label: m.display_name, created: m.created_at});
+      if (lmProvider === 'anthropic') {
+        var anthropicKey = getMetaKey('anthropicKey');
+        if (!anthropicKey) return jsonResp({ok:false, error:'NO_ANTHROPIC_KEY'});
+        var resp = UrlFetchApp.fetch('https://api.anthropic.com/v1/models?limit=50', {
+          method: 'get',
+          headers: {'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01'},
+          muteHttpExceptions: true
+        });
+        if (resp.getResponseCode() !== 200) throw new Error('API error: ' + resp.getResponseCode());
+        var json = JSON.parse(resp.getContentText());
+        var models = [];
+        for (var i = 0; i < json.data.length; i++) {
+          var m = json.data[i];
+          models.push({id: m.id, label: m.display_name || m.id, created: m.created_at});
+        }
+        return jsonResp({ok:true, models: models});
+      } else if (lmProvider === 'openai') {
+        var openaiKey = getMetaKey('openaiKey');
+        if (!openaiKey) return jsonResp({ok:false, error:'NO_OPENAI_KEY'});
+        var resp = UrlFetchApp.fetch('https://api.openai.com/v1/models', {
+          method: 'get',
+          headers: {'Authorization': 'Bearer ' + openaiKey},
+          muteHttpExceptions: true
+        });
+        if (resp.getResponseCode() !== 200) throw new Error('OpenAI API error: ' + resp.getResponseCode());
+        var json = JSON.parse(resp.getContentText());
+        var models = [];
+        for (var i = 0; i < json.data.length; i++) {
+          var mid = json.data[i].id;
+          if (mid.indexOf('gpt') >= 0 || mid.indexOf('o1') >= 0 || mid.indexOf('o3') >= 0 || mid.indexOf('o4') >= 0) {
+            models.push({id: mid, label: mid});
+          }
+        }
+        models.sort(function(a,b){ return a.id < b.id ? 1 : -1; });
+        return jsonResp({ok:true, models: models});
+      } else if (lmProvider === 'gemini') {
+        return jsonResp({ok:true, models: [
+          {id:'gemini-2.5-pro-preview-06-05', label:'Gemini 2.5 Pro'},
+          {id:'gemini-2.5-flash-preview-05-20', label:'Gemini 2.5 Flash'},
+          {id:'gemini-2.0-flash', label:'Gemini 2.0 Flash'},
+          {id:'gemini-2.0-flash-lite', label:'Gemini 2.0 Flash Lite'}
+        ]});
+      } else if (lmProvider === 'grok') {
+        return jsonResp({ok:true, models: [
+          {id:'grok-3', label:'Grok 3'},
+          {id:'grok-3-mini', label:'Grok 3 Mini'},
+          {id:'grok-2', label:'Grok 2'}
+        ]});
+      } else if (lmProvider === 'ollama') {
+        var ollamaUrl = getMetaKey('ollamaUrl') || 'http://localhost:11434';
+        try {
+          var resp = UrlFetchApp.fetch(ollamaUrl + '/api/tags', {muteHttpExceptions: true});
+          if (resp.getResponseCode() !== 200) throw new Error('Ollama unavailable');
+          var json = JSON.parse(resp.getContentText());
+          var models = [];
+          if (json.models) {
+            for (var i = 0; i < json.models.length; i++) {
+              models.push({id: json.models[i].name, label: json.models[i].name});
+            }
+          }
+          return jsonResp({ok:true, models: models});
+        } catch(olErr) {
+          return jsonResp({ok:true, models: [{id:'llama3.1', label:'Llama 3.1'}, {id:'mistral', label:'Mistral'}, {id:'qwen2.5', label:'Qwen 2.5'}]});
+        }
       }
-      return jsonResp({ok:true, models: models});
+      return jsonResp({ok:false, error:'Unknown provider: ' + lmProvider});
     } catch(err) {
       return jsonResp({ok:false, error: err.message});
     }
@@ -4546,11 +4796,12 @@ function doGet(e) {
   if (action === 'dprice_score') {
     var d = p.d ? JSON.parse(p.d) : {};
     var name = d.name || '';
-    var model = d.model || 'claude-sonnet-4-6';
+    var provider = d.provider || getMetaKey('activeProvider') || 'anthropic';
+    var model = d.model || getDefaultModelForProvider(provider);
     var context = d.context || '';
     if (!name) return jsonResp({ok:false, error:'no company name'});
     try {
-      var result = scoreDPrice(name, model, context);
+      var result = scoreDPrice(name, provider, model, context);
       return jsonResp({ok:true, data: result});
     } catch(err) {
       return jsonResp({ok:false, error: err.message});
@@ -4680,7 +4931,7 @@ function writeSheet(sheet, headers, rows) {
 function saveMeta(ss, meta) {
   var ms = ss.getSheetByName('meta');
   // Preserve protected keys (like dadataKey) that shouldn't be overwritten by save_all
-  var protectedKeys = ['dadataKey', 'checkoKey', 'anthropicKey'];
+  var protectedKeys = ['dadataKey', 'checkoKey', 'anthropicKey', 'openaiKey', 'geminiKey', 'grokKey', 'ollamaUrl', 'activeProvider'];
   var preserved = {};
   if (ms.getLastRow() >= 2) {
     var existing = ms.getRange(2, 1, ms.getLastRow()-1, 2).getValues();
@@ -5017,9 +5268,141 @@ function callClaude(apiKey, model, systemPrompt, userMessage) {
   return json.content[0].text;
 }
 
-function scoreDPrice(companyName, model, customContext) {
-  var anthropicKey = getMetaKey('anthropicKey');
-  if (!anthropicKey) throw new Error('NO_ANTHROPIC_KEY');
+function callOpenAI(apiKey, model, systemPrompt, userMessage) {
+  var url = 'https://api.openai.com/v1/chat/completions';
+  var payload = {
+    model: model,
+    max_tokens: 2000,
+    messages: [
+      {role: 'system', content: systemPrompt},
+      {role: 'user', content: userMessage}
+    ]
+  };
+  var opts = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'Authorization': 'Bearer ' + apiKey },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+  var resp = UrlFetchApp.fetch(url, opts);
+  var code = resp.getResponseCode();
+  if (code === 401) throw new Error('OPENAI_KEY_INVALID');
+  if (code !== 200) throw new Error('OpenAI API error: ' + code + ' ' + resp.getContentText().substring(0, 200));
+  var json = JSON.parse(resp.getContentText());
+  if (!json.choices || json.choices.length === 0) throw new Error('Empty OpenAI response');
+  return json.choices[0].message.content;
+}
+
+function callGemini(apiKey, model, systemPrompt, userMessage) {
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
+  var payload = {
+    systemInstruction: { parts: [{ text: systemPrompt }] },
+    contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+    generationConfig: { maxOutputTokens: 2000 }
+  };
+  var opts = {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+  var resp = UrlFetchApp.fetch(url, opts);
+  var code = resp.getResponseCode();
+  if (code === 400 || code === 403) throw new Error('GEMINI_KEY_INVALID');
+  if (code !== 200) throw new Error('Gemini API error: ' + code + ' ' + resp.getContentText().substring(0, 200));
+  var json = JSON.parse(resp.getContentText());
+  if (!json.candidates || json.candidates.length === 0) throw new Error('Empty Gemini response');
+  return json.candidates[0].content.parts[0].text;
+}
+
+function callGrok(apiKey, model, systemPrompt, userMessage) {
+  var url = 'https://api.x.ai/v1/chat/completions';
+  var payload = {
+    model: model,
+    max_tokens: 2000,
+    messages: [
+      {role: 'system', content: systemPrompt},
+      {role: 'user', content: userMessage}
+    ]
+  };
+  var opts = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'Authorization': 'Bearer ' + apiKey },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+  var resp = UrlFetchApp.fetch(url, opts);
+  var code = resp.getResponseCode();
+  if (code === 401) throw new Error('GROK_KEY_INVALID');
+  if (code !== 200) throw new Error('Grok API error: ' + code + ' ' + resp.getContentText().substring(0, 200));
+  var json = JSON.parse(resp.getContentText());
+  if (!json.choices || json.choices.length === 0) throw new Error('Empty Grok response');
+  return json.choices[0].message.content;
+}
+
+function callOllama(baseUrl, model, systemPrompt, userMessage) {
+  var url = (baseUrl || 'http://localhost:11434') + '/api/chat';
+  var payload = {
+    model: model,
+    messages: [
+      {role: 'system', content: systemPrompt},
+      {role: 'user', content: userMessage}
+    ],
+    stream: false
+  };
+  var opts = {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+  var resp = UrlFetchApp.fetch(url, opts);
+  var code = resp.getResponseCode();
+  if (code !== 200) throw new Error('Ollama error: ' + code + ' ' + resp.getContentText().substring(0, 200));
+  var json = JSON.parse(resp.getContentText());
+  if (!json.message || !json.message.content) throw new Error('Empty Ollama response');
+  return json.message.content;
+}
+
+function callLLM(provider, model, systemPrompt, userMessage) {
+  if (provider === 'anthropic') {
+    var aKey = getMetaKey('anthropicKey');
+    if (!aKey) throw new Error('NO_ANTHROPIC_KEY');
+    return callClaude(aKey, model, systemPrompt, userMessage);
+  } else if (provider === 'openai') {
+    var oKey = getMetaKey('openaiKey');
+    if (!oKey) throw new Error('NO_OPENAI_KEY');
+    return callOpenAI(oKey, model, systemPrompt, userMessage);
+  } else if (provider === 'gemini') {
+    var gKey = getMetaKey('geminiKey');
+    if (!gKey) throw new Error('NO_GEMINI_KEY');
+    return callGemini(gKey, model, systemPrompt, userMessage);
+  } else if (provider === 'grok') {
+    var xKey = getMetaKey('grokKey');
+    if (!xKey) throw new Error('NO_GROK_KEY');
+    return callGrok(xKey, model, systemPrompt, userMessage);
+  } else if (provider === 'ollama') {
+    var olUrl = getMetaKey('ollamaUrl');
+    return callOllama(olUrl, model, systemPrompt, userMessage);
+  }
+  throw new Error('UNKNOWN_PROVIDER: ' + provider);
+}
+
+function getDefaultModelForProvider(provider) {
+  var defaults = {
+    anthropic: 'claude-sonnet-4-6',
+    openai: 'gpt-4o',
+    gemini: 'gemini-2.0-flash',
+    grok: 'grok-3',
+    ollama: 'llama3.1'
+  };
+  return defaults[provider] || 'claude-sonnet-4-6';
+}
+
+function scoreDPrice(companyName, provider, model, customContext) {
+  provider = provider || getMetaKey('activeProvider') || 'anthropic';
 
   // 1. Get financial data (reuse existing)
   var finData = {};
@@ -5089,8 +5472,8 @@ function scoreDPrice(companyName, model, customContext) {
     userMessage += '\\n=== ДОПОЛНИТЕЛЬНЫЙ КОНТЕКСТ ОТ АНАЛИТИКА ===\\n' + customContext + '\\n';
   }
 
-  // 5. Call Claude
-  var responseText = callClaude(anthropicKey, model, systemPrompt, userMessage);
+  // 5. Call LLM
+  var responseText = callLLM(provider, model, systemPrompt, userMessage);
 
   // 6. Parse JSON response
   // Remove potential markdown wrapping
@@ -5104,7 +5487,7 @@ function scoreDPrice(companyName, model, customContext) {
     if (jsonMatch) {
       parsed = JSON.parse(jsonMatch[0]);
     } else {
-      throw new Error('Failed to parse Claude response');
+      throw new Error('Failed to parse LLM response');
     }
   }
   // Add info about data sources
@@ -5145,7 +5528,7 @@ async function gsFetch(action, data) {
 
     // For read operations and small-data actions — use simple GET (can read response)
     // POST-via-iframe can't read cross-origin response, so all actions needing response go through GET
-    if (!jsonData || ['ping','load','debug','auth','list_users','add_user','delete_user','get_finance','check_dadata_key','set_dadata_key','set_checko_key','set_anthropic_key','dprice_score','list_models'].includes(action)) {
+    if (!jsonData || ['ping','load','debug','auth','list_users','add_user','delete_user','get_finance','check_dadata_key','set_dadata_key','set_checko_key','set_anthropic_key','set_openai_key','set_gemini_key','set_grok_key','set_ollama_url','set_active_provider','get_llm_keys_status','dprice_score','list_models'].includes(action)) {
         const url = new URL(gsUrl);
         url.searchParams.set('action', action);
         if (jsonData) url.searchParams.set('d', jsonData);
