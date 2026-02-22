@@ -2892,45 +2892,79 @@ function finShowKeySetup(name) {
 
             <div style="margin-top:16px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--hover-bg)">
                 <p style="margin:0 0 6px"><b>3. LLM-провайдеры</b> — AI-анализ DPrice</p>
-                <p style="font-size:11px;color:var(--dim);margin:0 0 8px">Введите ключи и отметьте используемые (можно несколько для ансамбля):</p>
+                <p style="font-size:11px;color:var(--dim);margin:0 0 8px">Введите ключи, выберите модели и отметьте используемые (можно несколько для ансамбля):</p>
                 <div style="display:flex;flex-direction:column;gap:6px">
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                    <div style="display:flex;align-items:center;gap:6px;font-size:12px">
                         <input type="checkbox" name="settingsLlmProvider" value="anthropic" ${dpSelectedProviders.includes('anthropic') ? 'checked' : ''} style="accent-color:var(--accent)">
-                        <span style="width:110px"><b>Anthropic</b></span>
+                        <span style="width:90px"><b>Anthropic</b></span>
                         <input type="text" id="anthropicKeyInput2" placeholder="sk-ant-..." style="flex:1;padding:5px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:12px">
-                    </label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                        <select id="anthropicModelSelect2" style="width:150px;padding:5px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:11px">${dpModelOptionsHtml('anthropic')}</select>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;font-size:12px">
                         <input type="checkbox" name="settingsLlmProvider" value="openai" ${dpSelectedProviders.includes('openai') ? 'checked' : ''} style="accent-color:var(--accent)">
-                        <span style="width:110px"><b>OpenAI</b></span>
+                        <span style="width:90px"><b>OpenAI</b></span>
                         <input type="text" id="openaiKeyInput2" placeholder="sk-..." style="flex:1;padding:5px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:12px">
-                    </label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                        <select id="openaiModelSelect2" style="width:150px;padding:5px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:11px">${dpModelOptionsHtml('openai')}</select>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;font-size:12px">
                         <input type="checkbox" name="settingsLlmProvider" value="gemini" ${dpSelectedProviders.includes('gemini') ? 'checked' : ''} style="accent-color:var(--accent)">
-                        <span style="width:110px"><b>Google Gemini</b></span>
+                        <span style="width:90px"><b>Gemini</b></span>
                         <input type="text" id="geminiKeyInput2" placeholder="AI..." style="flex:1;padding:5px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:12px">
-                    </label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                        <select id="geminiModelSelect2" style="width:150px;padding:5px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:11px">${dpModelOptionsHtml('gemini')}</select>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;font-size:12px">
                         <input type="checkbox" name="settingsLlmProvider" value="grok" ${dpSelectedProviders.includes('grok') ? 'checked' : ''} style="accent-color:var(--accent)">
-                        <span style="width:110px"><b>xAI Grok</b></span>
+                        <span style="width:90px"><b>xAI Grok</b></span>
                         <input type="text" id="grokKeyInput2" placeholder="xai-..." style="flex:1;padding:5px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:12px">
-                    </label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                        <select id="grokModelSelect2" style="width:150px;padding:5px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:11px">${dpModelOptionsHtml('grok')}</select>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;font-size:12px">
                         <input type="checkbox" name="settingsLlmProvider" value="ollama" ${dpSelectedProviders.includes('ollama') ? 'checked' : ''} style="accent-color:var(--accent)">
-                        <span style="width:110px"><b>Ollama</b></span>
+                        <span style="width:90px"><b>Ollama</b></span>
                         <input type="text" id="ollamaUrlInput2" placeholder="http://localhost:11434" style="flex:1;padding:5px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:12px">
-                    </label>
+                        <select id="ollamaModelSelect2" style="width:150px;padding:5px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:11px">${dpModelOptionsHtml('ollama')}</select>
+                    </div>
                 </div>
             </div>
 
+            <div id="settingsKeysLoading" style="font-size:12px;color:var(--dim);margin-top:6px">⏳ Загрузка сохранённых ключей...</div>
             <div id="dadataKeyError" style="color:#e74c3c;font-size:12px;margin-top:8px;display:none"></div>
         </div>
         <div class="fm-actions" style="margin-top:14px">
-            <button class="fm-ok" id="dadataKeySave">Сохранить</button>
+            <button class="fm-ok" id="dadataKeySave" disabled>Сохранить</button>
             <button class="fm-cancel" id="fmCancel">Отмена</button>
         </div>
     `);
-    setTimeout(() => {
+    setTimeout(async () => {
         const btn = document.getElementById('dadataKeySave');
+        const loadingEl = document.getElementById('settingsKeysLoading');
+        // --- Preload existing keys from Google Sheets ---
+        try {
+            const creds = adminGetCallerCredentials();
+            const keys = await gsFetch('get_llm_keys', creds);
+            if (keys && keys.ok) {
+                if (keys.dadataKey) { const el = document.getElementById('dadataKeyInput'); if (el) el.value = keys.dadataKey; }
+                if (keys.checkoKey) { const el = document.getElementById('checkoKeyInput'); if (el) el.value = keys.checkoKey; }
+                if (keys.anthropicKey) { const el = document.getElementById('anthropicKeyInput2'); if (el) el.value = keys.anthropicKey; }
+                if (keys.openaiKey) { const el = document.getElementById('openaiKeyInput2'); if (el) el.value = keys.openaiKey; }
+                if (keys.geminiKey) { const el = document.getElementById('geminiKeyInput2'); if (el) el.value = keys.geminiKey; }
+                if (keys.grokKey) { const el = document.getElementById('grokKeyInput2'); if (el) el.value = keys.grokKey; }
+                if (keys.ollamaUrl) { const el = document.getElementById('ollamaUrlInput2'); if (el) el.value = keys.ollamaUrl; }
+                // Restore saved models in selects
+                ['anthropic','openai','gemini','grok','ollama'].forEach(p => {
+                    const mKey = p + 'Model';
+                    if (keys[mKey]) {
+                        const sel = document.getElementById(p + 'ModelSelect2');
+                        if (sel) sel.value = keys[mKey];
+                        dpSavedModels[p] = keys[mKey];
+                    }
+                });
+                dpSaveSavedModels();
+            }
+        } catch(e) { console.warn('[Settings] Failed to load keys:', e); }
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (btn) btn.disabled = false;
+        // --- Save handler ---
         if (btn) btn.onclick = async () => {
             const dadataKey = document.getElementById('dadataKeyInput')?.value?.trim();
             const checkoKey = document.getElementById('checkoKeyInput')?.value?.trim();
@@ -2940,6 +2974,12 @@ function finShowKeySetup(name) {
             const grokKey = document.getElementById('grokKeyInput2')?.value?.trim();
             const ollamaUrl = document.getElementById('ollamaUrlInput2')?.value?.trim();
             const checkedLlmProviders = [...document.querySelectorAll('input[name="settingsLlmProvider"]:checked')].map(c => c.value);
+            // Collect selected models
+            const selectedModels = {};
+            ['anthropic','openai','gemini','grok','ollama'].forEach(p => {
+                const sel = document.getElementById(p + 'ModelSelect2');
+                if (sel && sel.value) selectedModels[p] = sel.value;
+            });
             if (!dadataKey || dadataKey.length < 10) {
                 const errEl = document.getElementById('dadataKeyError');
                 if (errEl) { errEl.textContent = 'Введите корректный API-ключ DaData'; errEl.style.display = ''; }
@@ -2956,6 +2996,12 @@ function finShowKeySetup(name) {
                     if (geminiKey) await gsFetch('set_gemini_key', { key: geminiKey, ...creds });
                     if (grokKey) await gsFetch('set_grok_key', { key: grokKey, ...creds });
                     if (ollamaUrl) await gsFetch('set_ollama_url', { url: ollamaUrl, ...creds });
+                    // Save selected models
+                    if (Object.keys(selectedModels).length > 0) {
+                        await gsFetch('set_active_models', { models: selectedModels, ...creds });
+                        Object.assign(dpSavedModels, selectedModels);
+                        dpSaveSavedModels();
+                    }
                     if (checkedLlmProviders.length > 0) {
                         await gsFetch('set_active_provider', { provider: checkedLlmProviders[0], ...creds });
                         dpSelectedProviders = checkedLlmProviders;
@@ -3106,13 +3152,26 @@ let dpSelectedProviders = (() => {
 function dpSaveSelectedProviders() {
     localStorage.setItem('dp_selected_providers', JSON.stringify(dpSelectedProviders));
 }
+const DP_DEFAULT_MODELS = { anthropic:'claude-sonnet-4-6', openai:'gpt-4o', gemini:'gemini-2.0-flash', grok:'grok-3', ollama:'llama3.1' };
+let dpSavedModels = (() => {
+    try { const v = JSON.parse(localStorage.getItem('dp_saved_models')); return (v && typeof v === 'object') ? v : {}; }
+    catch(e) { return {}; }
+})();
+function dpSaveSavedModels() {
+    try { localStorage.setItem('dp_saved_models', JSON.stringify(dpSavedModels)); } catch(e) {}
+}
 function dpGetDefaultModel() {
-    const d = { anthropic:'claude-sonnet-4-6', openai:'gpt-4o', gemini:'gemini-2.0-flash', grok:'grok-3', ollama:'llama3.1' };
-    return d[dpActiveProvider] || 'claude-sonnet-4-6';
+    return dpSavedModels[dpActiveProvider] || DP_DEFAULT_MODELS[dpActiveProvider] || 'claude-sonnet-4-6';
 }
 function dpGetDefaultModelForProvider(provider) {
-    const d = { anthropic:'claude-sonnet-4-6', openai:'gpt-4o', gemini:'gemini-2.0-flash', grok:'grok-3', ollama:'llama3.1' };
-    return d[provider] || 'claude-sonnet-4-6';
+    return dpSavedModels[provider] || DP_DEFAULT_MODELS[provider] || 'claude-sonnet-4-6';
+}
+function dpModelOptionsHtml(provider, selectedModel) {
+    const models = dpProviderModels[provider] || [];
+    const def = selectedModel || dpGetDefaultModelForProvider(provider);
+    return models.map(m =>
+        `<option value="${m.id}"${m.id === def ? ' selected' : ''}>${escHtml(m.label)}</option>`
+    ).join('');
 }
 
 function dpScoreColor(score) {
@@ -3569,29 +3628,59 @@ function dpShowLLMKeySetup(name) {
     ];
     const inputsHtml = providers.map(p => `
         <div style="margin-top:8px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--hover-bg)">
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px">
                 <input type="checkbox" name="llmActiveProviders" value="${p.id}" ${dpSelectedProviders.includes(p.id) ? 'checked' : ''} style="accent-color:var(--accent)">
-                <b>${p.name}</b>
-            </label>
-            <div style="font-size:10px;color:var(--dim);margin:2px 0 4px 22px"><a href="${p.url}" target="_blank">Получить ключ →</a></div>
-            <input type="text" id="${p.inputId}" placeholder="${p.ph}" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:12px">
+                <b style="width:80px">${p.name}</b>
+                <select id="${p.inputId}Model" style="width:140px;padding:4px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:11px">${dpModelOptionsHtml(p.id)}</select>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:4px;margin-left:22px">
+                <input type="text" id="${p.inputId}" placeholder="${p.ph}" style="flex:1;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:12px">
+                <a href="${p.url}" target="_blank" style="font-size:10px;white-space:nowrap">Ключ →</a>
+            </div>
         </div>
     `).join('');
 
     dpOpenModal(`
         <div class="fin-header"><h2>🔑 Настройка LLM-провайдеров</h2></div>
         <div class="fin-key-setup">
-            <p style="font-size:12px;color:var(--dim)">Введите ключи для нужных провайдеров и отметьте используемые:</p>
+            <p style="font-size:12px;color:var(--dim)">Введите ключи, выберите модели и отметьте используемые:</p>
             ${inputsHtml}
+            <div id="llmKeysLoading" style="font-size:12px;color:var(--dim);margin-top:6px">⏳ Загрузка сохранённых ключей...</div>
             <div id="llmKeyError" style="color:#e74c3c;font-size:12px;margin-top:8px;display:none"></div>
         </div>
         <div class="fm-actions" style="margin-top:14px">
-            <button class="fm-ok" id="llmKeySave">Сохранить</button>
+            <button class="fm-ok" id="llmKeySave" disabled>Сохранить</button>
             <button class="fm-cancel" id="fmCancel">Отмена</button>
         </div>
     `);
-    setTimeout(() => {
+    setTimeout(async () => {
         const btn = document.getElementById('llmKeySave');
+        const loadingEl = document.getElementById('llmKeysLoading');
+        // --- Preload existing keys from Google Sheets ---
+        try {
+            const creds = adminGetCallerCredentials();
+            const keys = await gsFetch('get_llm_keys', creds);
+            if (keys && keys.ok) {
+                if (keys.anthropicKey) { const el = document.getElementById('llmKeyAnthropic'); if (el) el.value = keys.anthropicKey; }
+                if (keys.openaiKey) { const el = document.getElementById('llmKeyOpenai'); if (el) el.value = keys.openaiKey; }
+                if (keys.geminiKey) { const el = document.getElementById('llmKeyGemini'); if (el) el.value = keys.geminiKey; }
+                if (keys.grokKey) { const el = document.getElementById('llmKeyGrok'); if (el) el.value = keys.grokKey; }
+                if (keys.ollamaUrl) { const el = document.getElementById('llmUrlOllama'); if (el) el.value = keys.ollamaUrl; }
+                // Restore saved models
+                providers.forEach(p => {
+                    const mKey = p.id + 'Model';
+                    if (keys[mKey]) {
+                        const sel = document.getElementById(p.inputId + 'Model');
+                        if (sel) sel.value = keys[mKey];
+                        dpSavedModels[p.id] = keys[mKey];
+                    }
+                });
+                dpSaveSavedModels();
+            }
+        } catch(e) { console.warn('[LLMKeySetup] Failed to load keys:', e); }
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (btn) btn.disabled = false;
+        // --- Save handler ---
         if (btn) btn.onclick = async () => {
             btn.disabled = true; btn.textContent = 'Сохранение...';
             try {
@@ -3603,6 +3692,12 @@ function dpShowLLMKeySetup(name) {
                 const geminiKey = document.getElementById('llmKeyGemini')?.value?.trim();
                 const grokKey = document.getElementById('llmKeyGrok')?.value?.trim();
                 const ollamaUrl = document.getElementById('llmUrlOllama')?.value?.trim();
+                // Collect selected models
+                const selectedModels = {};
+                providers.forEach(p => {
+                    const sel = document.getElementById(p.inputId + 'Model');
+                    if (sel && sel.value) selectedModels[p.id] = sel.value;
+                });
 
                 if (anthropicKey) await gsFetch('set_anthropic_key', { key: anthropicKey, ...creds });
                 if (openaiKey) await gsFetch('set_openai_key', { key: openaiKey, ...creds });
@@ -3610,6 +3705,12 @@ function dpShowLLMKeySetup(name) {
                 if (grokKey) await gsFetch('set_grok_key', { key: grokKey, ...creds });
                 if (ollamaUrl) await gsFetch('set_ollama_url', { url: ollamaUrl, ...creds });
                 await gsFetch('set_active_provider', { provider: checkedProviders[0], ...creds });
+                // Save selected models
+                if (Object.keys(selectedModels).length > 0) {
+                    await gsFetch('set_active_models', { models: selectedModels, ...creds });
+                    Object.assign(dpSavedModels, selectedModels);
+                    dpSaveSavedModels();
+                }
 
                 dpSelectedProviders = checkedProviders;
                 dpSaveSelectedProviders();
@@ -4959,8 +5060,46 @@ function doGet(e) {
       gemini: !!getMetaKey('geminiKey'),
       grok: !!getMetaKey('grokKey'),
       ollamaUrl: getMetaKey('ollamaUrl') || '',
-      activeProvider: getMetaKey('activeProvider') || 'anthropic'
+      activeProvider: getMetaKey('activeProvider') || 'anthropic',
+      anthropicModel: getMetaKey('anthropicModel') || '',
+      openaiModel: getMetaKey('openaiModel') || '',
+      geminiModel: getMetaKey('geminiModel') || '',
+      grokModel: getMetaKey('grokModel') || '',
+      ollamaModel: getMetaKey('ollamaModel') || ''
     });
+  }
+
+  if (action === 'get_llm_keys') {
+    var d = p.d ? JSON.parse(p.d) : {};
+    if (!verifyAdmin(d.callerLogin, d.callerPassHash))
+      return jsonResp({ok:false, error:'access denied'});
+    return jsonResp({ok:true,
+      dadataKey: getMetaKey('dadataKey') || '',
+      checkoKey: getMetaKey('checkoKey') || '',
+      anthropicKey: getMetaKey('anthropicKey') || '',
+      openaiKey: getMetaKey('openaiKey') || '',
+      geminiKey: getMetaKey('geminiKey') || '',
+      grokKey: getMetaKey('grokKey') || '',
+      ollamaUrl: getMetaKey('ollamaUrl') || '',
+      activeProvider: getMetaKey('activeProvider') || 'anthropic',
+      anthropicModel: getMetaKey('anthropicModel') || '',
+      openaiModel: getMetaKey('openaiModel') || '',
+      geminiModel: getMetaKey('geminiModel') || '',
+      grokModel: getMetaKey('grokModel') || '',
+      ollamaModel: getMetaKey('ollamaModel') || ''
+    });
+  }
+
+  if (action === 'set_active_models') {
+    var d = p.d ? JSON.parse(p.d) : {};
+    if (!verifyAdmin(d.callerLogin, d.callerPassHash))
+      return jsonResp({ok:false, error:'access denied'});
+    var models = d.models || {};
+    var vp = ['anthropic','openai','gemini','grok','ollama'];
+    for (var i = 0; i < vp.length; i++) {
+      if (models[vp[i]]) setMetaKey(vp[i] + 'Model', models[vp[i]]);
+    }
+    return jsonResp({ok:true});
   }
 
   if (action === 'list_models') {
@@ -5945,7 +6084,7 @@ async function gsFetch(action, data) {
 
     // For read operations and small-data actions — use simple GET (can read response)
     // POST-via-iframe can't read cross-origin response, so all actions needing response go through GET
-    if (!jsonData || ['ping','load','debug','auth','list_users','add_user','delete_user','get_finance','check_dadata_key','set_dadata_key','set_checko_key','set_anthropic_key','set_openai_key','set_gemini_key','set_grok_key','set_ollama_url','set_active_provider','get_llm_keys_status','dprice_score','dprice_score_multi','list_models'].includes(action)) {
+    if (!jsonData || ['ping','load','debug','auth','list_users','add_user','delete_user','get_finance','check_dadata_key','set_dadata_key','set_checko_key','set_anthropic_key','set_openai_key','set_gemini_key','set_grok_key','set_ollama_url','set_active_provider','get_llm_keys_status','get_llm_keys','set_active_models','dprice_score','dprice_score_multi','list_models'].includes(action)) {
         const url = new URL(gsUrl);
         url.searchParams.set('action', action);
         if (jsonData) url.searchParams.set('d', jsonData);
