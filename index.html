@@ -3640,10 +3640,7 @@ async function dpRunAnalysis(name) {
         const modelSelect = document.getElementById('dpModelSelect');
         const model = modelSelect ? modelSelect.value : dpGetDefaultModelForProvider(provider);
         const cacheKey = name + '|' + provider + '|' + model + '|' + customContext;
-        if (dpCache[cacheKey]) {
-            dpOpenModal(dpRenderScore(name, dpCache[cacheKey]));
-            return;
-        }
+        // Always run fresh analysis — no cache on button click
         const provLabel = LLM_PROVIDERS[provider]?.label || provider;
         resultArea.innerHTML = `
             <div class="fin-loading">
@@ -3699,10 +3696,7 @@ async function dpRunAnalysis(name) {
         const providersArr = dpSelectedProviders.map(p => ({ provider: p, model: dpGetDefaultModelForProvider(p) }));
         const sortedKey = dpSelectedProviders.slice().sort().join('+');
         const cacheKey = name + '|multi:' + sortedKey + '|' + customContext;
-        if (dpCache[cacheKey]) {
-            dpOpenModal(dpRenderMultiScore(name, dpCache[cacheKey]));
-            return;
-        }
+        // Always run fresh analysis — no cache on button click
         const provLabels = dpSelectedProviders.map(p => LLM_PROVIDERS[p]?.label || p).join(', ');
         resultArea.innerHTML = `
             <div class="fin-loading">
@@ -5994,6 +5988,7 @@ function callGrok(apiKey, model, systemPrompt, userMessage) {
   var resp = UrlFetchApp.fetch(url, opts);
   var code = resp.getResponseCode();
   if (code === 401) throw new Error('GROK_KEY_INVALID');
+  if (code === 403) throw new Error('Grok: нет кредитов/лицензии. Пополните баланс на console.x.ai');
   if (code !== 200) throw new Error('Grok API error: ' + code + ' ' + resp.getContentText().substring(0, 200));
   var json = JSON.parse(resp.getContentText());
   if (!json.choices || json.choices.length === 0) throw new Error('Empty Grok response');
