@@ -507,13 +507,22 @@
         .dp-score-num small { font-size:12px; font-weight:400; color:var(--dim); }
         .dp-factors { margin:8px 0; }
         .dp-factor { display:flex; align-items:center; gap:6px; padding:3px 0;
-            border-bottom:1px solid var(--border); font-size:11px; }
+            border-bottom:1px solid var(--border); font-size:11px; flex-wrap:wrap; }
         .dp-factor:last-child { border-bottom:none; }
-        .dp-factor-name { flex:1; color:var(--text); min-width:0; }
+        .dp-factor-name { flex:1; color:var(--text); min-width:0; flex-basis:auto; }
         .dp-factor-score { font-weight:700; width:24px; text-align:center; font-size:11px; }
         .dp-factor-bar { width:50px; height:5px; border-radius:3px; background:var(--border); overflow:hidden; flex-shrink:0; }
         .dp-factor-bar-fill { height:100%; border-radius:3px; transition:width .5s ease; }
-        .dp-factor-comment { font-size:10px; color:var(--dim); margin-top:1px; }
+        .dp-factor-comment { font-size:10px; color:var(--dim); margin-top:2px;
+            display:none; white-space:pre-wrap; word-break:break-word; line-height:1.45;
+            padding:5px 8px; background:var(--hover-bg); border-radius:4px;
+            flex-basis:100%; order:9; }
+        .dp-factor.expanded .dp-factor-comment { display:block; }
+        .dp-factor-name { cursor:pointer; }
+        .dp-factor-name::before { content:'▸ '; font-size:9px; color:var(--dim); }
+        .dp-factor.expanded .dp-factor-name::before { content:'▾ '; }
+        .dp-factor.no-expand .dp-factor-name { cursor:default; }
+        .dp-factor.no-expand .dp-factor-name::before { content:''; }
         .dp-summary { font-size:11px; color:var(--text); line-height:1.5; padding:8px 10px;
             background:var(--hover-bg); border-radius:6px; margin:8px 0; }
         .dp-recommendation { font-size:11px; color:var(--accent); font-weight:600;
@@ -3285,13 +3294,13 @@ function dpRenderScore(name, data) {
             const fs = parseFloat(factor.score) || 0;
             const fc = dpScoreColor(fs);
             const pct = fs * 10;
+            const hasComment = factor.comment && factor.comment.trim();
             factorsHtml += `
-                <div class="dp-factor">
-                    <div class="dp-factor-name">${escHtml(fname)}
-                        ${factor.comment ? `<div class="dp-factor-comment">${escHtml(factor.comment)}</div>` : ''}
-                    </div>
+                <div class="dp-factor${hasComment ? '' : ' no-expand'}" onclick="this.classList.toggle('expanded')">
+                    <div class="dp-factor-name">${escHtml(fname)}</div>
                     <div class="dp-factor-score" style="color:${fc}">${fs.toFixed(1)}</div>
                     <div class="dp-factor-bar"><div class="dp-factor-bar-fill" style="width:${pct}%;background:${fc}"></div></div>
+                    ${hasComment ? `<div class="dp-factor-comment">${escHtml(factor.comment)}</div>` : ''}
                 </div>`;
         }
     }
@@ -3390,11 +3399,23 @@ function dpRenderMultiScore(name, data) {
             const fs = parseFloat(factor.score) || 0;
             const fc = dpScoreColor(fs);
             const pct = fs * 10;
+            // Collect comments from all providers for this factor
+            let combinedComments = '';
+            for (const pk of provKeys) {
+                const pr = provResults[pk];
+                if (pr.factors && pr.factors[key] && pr.factors[key].comment) {
+                    const pLabel = LLM_PROVIDERS[pk]?.label || pk;
+                    const pScore = parseFloat(pr.factors[key].score) || 0;
+                    combinedComments += (combinedComments ? '\n\n' : '') + '【' + pLabel + ' — ' + pScore.toFixed(1) + '】\n' + pr.factors[key].comment;
+                }
+            }
+            const hasComment = combinedComments.length > 0;
             avgFactorsHtml += `
-                <div class="dp-factor">
+                <div class="dp-factor${hasComment ? '' : ' no-expand'}" onclick="this.classList.toggle('expanded')">
                     <div class="dp-factor-name">${escHtml(fname)}</div>
                     <div class="dp-factor-score" style="color:${fc}">${fs.toFixed(1)}</div>
                     <div class="dp-factor-bar"><div class="dp-factor-bar-fill" style="width:${pct}%;background:${fc}"></div></div>
+                    ${hasComment ? `<div class="dp-factor-comment">${escHtml(combinedComments)}</div>` : ''}
                 </div>`;
         }
     }
@@ -3412,10 +3433,11 @@ function dpRenderMultiScore(name, data) {
                 const fname = factorNames[key] || key;
                 const fs = parseFloat(factor.score) || 0;
                 const fc = dpScoreColor(fs);
-                pfHtml += `<div style="display:flex;gap:6px;align-items:center;font-size:11px;padding:2px 0">
-                    <span style="flex:1;color:var(--dim)">${escHtml(fname)}</span>
-                    <span style="font-weight:600;color:${fc}">${fs.toFixed(1)}</span>
-                    ${factor.comment ? `<span style="color:var(--dim);font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(factor.comment)}">${escHtml(factor.comment)}</span>` : ''}
+                const hasC = factor.comment && factor.comment.trim();
+                pfHtml += `<div class="dp-factor${hasC ? '' : ' no-expand'}" onclick="this.classList.toggle('expanded')" style="font-size:11px;padding:2px 0">
+                    <div class="dp-factor-name" style="color:var(--dim)">${escHtml(fname)}</div>
+                    <div class="dp-factor-score" style="color:${fc}">${fs.toFixed(1)}</div>
+                    ${hasC ? `<div class="dp-factor-comment">${escHtml(factor.comment)}</div>` : ''}
                 </div>`;
             }
         }
