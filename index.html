@@ -5155,6 +5155,7 @@ function doGet(e) {
         var models = [];
         for (var i = 0; i < json.data.length; i++) {
           var mid = json.data[i].id;
+          if (mid.indexOf('dall') >= 0 || mid.indexOf('tts') >= 0 || mid.indexOf('whisper') >= 0 || mid.indexOf('embed') >= 0 || mid.indexOf('moderation') >= 0 || mid.indexOf('transcribe') >= 0 || mid.indexOf('realtime') >= 0 || mid.indexOf('audio') >= 0 || mid.indexOf('image') >= 0 || mid.indexOf('sora') >= 0) continue;
           if (mid.indexOf('gpt') >= 0 || mid.indexOf('o1') >= 0 || mid.indexOf('o3') >= 0 || mid.indexOf('o4') >= 0 || mid.indexOf('o5') >= 0) {
             models.push({id: mid, label: mid});
           }
@@ -5162,23 +5163,49 @@ function doGet(e) {
         models.sort(function(a,b){ return a.id < b.id ? 1 : -1; });
         return jsonResp({ok:true, models: models});
       } else if (lmProvider === 'gemini') {
-        return jsonResp({ok:true, models: [
-          {id:'gemini-3.1-pro-preview', label:'Gemini 3.1 Pro (preview)'},
-          {id:'gemini-3-pro-preview', label:'Gemini 3 Pro (preview)'},
-          {id:'gemini-3-flash-preview', label:'Gemini 3 Flash (preview)'},
-          {id:'gemini-2.5-pro', label:'Gemini 2.5 Pro'},
-          {id:'gemini-2.5-flash', label:'Gemini 2.5 Flash'},
-          {id:'gemini-2.5-flash-lite', label:'Gemini 2.5 Flash-Lite'}
-        ]});
+        var geminiKey = getMetaKey('geminiKey');
+        if (!geminiKey) return jsonResp({ok:false, error:'NO_GEMINI_KEY'});
+        var resp = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=100&key=' + geminiKey, {
+          method: 'get', muteHttpExceptions: true
+        });
+        if (resp.getResponseCode() !== 200) throw new Error('Gemini API error: ' + resp.getResponseCode());
+        var json = JSON.parse(resp.getContentText());
+        var models = [];
+        if (json.models) {
+          for (var i = 0; i < json.models.length; i++) {
+            var gm = json.models[i];
+            var methods = gm.supportedGenerationMethods || [];
+            if (methods.indexOf('generateContent') < 0) continue;
+            var mid = gm.name.replace('models/', '');
+            if (mid.indexOf('gemini') < 0) continue;
+            if (mid.indexOf('embed') >= 0 || mid.indexOf('tts') >= 0 || mid.indexOf('image') >= 0 || mid.indexOf('audio') >= 0 || mid.indexOf('video') >= 0 || mid.indexOf('robot') >= 0 || mid.indexOf('veo') >= 0) continue;
+            models.push({id: mid, label: gm.displayName || mid});
+          }
+        }
+        models.sort(function(a,b){ return a.id < b.id ? 1 : -1; });
+        if (models.length === 0) models.push({id:'gemini-2.5-flash', label:'Gemini 2.5 Flash'});
+        return jsonResp({ok:true, models: models});
       } else if (lmProvider === 'grok') {
-        return jsonResp({ok:true, models: [
-          {id:'grok-4-1-fast-non-reasoning', label:'Grok 4.1 Fast'},
-          {id:'grok-4-1-fast-reasoning', label:'Grok 4.1 Reasoning'},
-          {id:'grok-code-fast-1', label:'Grok Code Fast'},
-          {id:'grok-4-0709', label:'Grok 4'},
-          {id:'grok-3', label:'Grok 3'},
-          {id:'grok-3-mini', label:'Grok 3 Mini'}
-        ]});
+        var grokKey = getMetaKey('grokKey');
+        if (!grokKey) return jsonResp({ok:false, error:'NO_GROK_KEY'});
+        var resp = UrlFetchApp.fetch('https://api.x.ai/v1/models', {
+          method: 'get',
+          headers: {'Authorization': 'Bearer ' + grokKey},
+          muteHttpExceptions: true
+        });
+        if (resp.getResponseCode() !== 200) throw new Error('Grok API error: ' + resp.getResponseCode());
+        var json = JSON.parse(resp.getContentText());
+        var models = [];
+        if (json.data) {
+          for (var i = 0; i < json.data.length; i++) {
+            var mid = json.data[i].id;
+            if (mid.indexOf('imagine') >= 0 || mid.indexOf('image') >= 0 || mid.indexOf('video') >= 0 || mid.indexOf('vision') >= 0) continue;
+            models.push({id: mid, label: mid});
+          }
+        }
+        models.sort(function(a,b){ return a.id < b.id ? 1 : -1; });
+        if (models.length === 0) models.push({id:'grok-3', label:'Grok 3'});
+        return jsonResp({ok:true, models: models});
       } else if (lmProvider === 'ollama') {
         var ollamaUrl = getMetaKey('ollamaUrl') || 'http://localhost:11434';
         try {
