@@ -2852,7 +2852,7 @@ function finRenderData(name, d) {
             <div class="fin-sub">Финансовые показатели${yearStr}</div>
         </div>
         ${metrics.length > 0 ? '<div class="fin-metrics">' + metrics.join('') + '</div>' : '<div class="fin-not-found">' + (d.checkoError === 'RATE_LIMIT' ? '⚠️ Превышен дневной лимит запросов к Checko.ru (100/день). Попробуйте завтра.' : d.checkoError === 'PAYMENT_REQUIRED' ? '⚠️ Требуется оплата тарифа Checko.ru для продолжения.' : d.checkoError === 'KEY_INVALID' ? '⚠️ Ключ Checko.ru недействителен. Проверьте настройки API.' : d.checkoError === 'NO_KEY' ? '⚠️ Не настроен API-ключ Checko.ru' : d.checkoError ? '⚠️ Ошибка Checko.ru: ' + escHtml(d.checkoError) : 'Финансовые данные пока отсутствуют в реестре ФНС') + '</div>'}
-        ${(d._metaDebug || d._checkoDebug) ? '<div style="margin-top:10px;padding:8px;background:var(--hover-bg);border-radius:6px;font-size:10px;color:var(--dim);word-break:break-all"><b>[DEBUG]</b>' + (d._metaDebug ? '<br>meta keys: ' + escHtml(JSON.stringify(d._metaDebug)) : '') + '<br>checkoKeyLen: ' + (d._checkoKeyLen || 0) + (d._checkoDebug ? '<br>checko code: ' + escHtml(String(d._checkoDebug.code || '')) + ' | years: ' + escHtml(String(d._checkoDebug.years || '')) + '<br>body: ' + escHtml(String(d._checkoDebug.bodyPreview || '').substring(0, 300)) : '') + '</div>' : ''}
+        ${(d._metaDebug || d._checkoDebug || d._rawValues) ? '<div style="margin-top:10px;padding:8px;background:var(--hover-bg);border-radius:6px;font-size:10px;color:var(--dim);word-break:break-all"><b>[DEBUG]</b>' + (d._metaDebug ? '<br>meta keys: ' + escHtml(JSON.stringify(d._metaDebug)) : '') + '<br>checkoKeyLen: ' + (d._checkoKeyLen || 0) + (d._checkoDebug ? '<br>checko code: ' + escHtml(String(d._checkoDebug.code || '')) + ' | years: ' + escHtml(String(d._checkoDebug.years || '')) : '') + (d._rawValues ? '<br>raw: 2110=' + d._rawValues['2110'] + ' 2400=' + d._rawValues['2400'] + ' 2120=' + d._rawValues['2120'] + ' 1600=' + d._rawValues['1600'] : '') + '</div>' : ''}
         ${sourceStr}
         ${detailsHtml}
         <div class="fm-actions" style="margin-top:14px">
@@ -4845,10 +4845,11 @@ function fetchFinanceData(companyName) {
             var latestYear = years[0];
             var yd = fd[latestYear];
             result.year = parseInt(latestYear);
-            if (yd['2110'] !== undefined) result.revenue = parseFloat(yd['2110']) * 1000;
-            if (yd['2400'] !== undefined) result.income = parseFloat(yd['2400']) * 1000;
-            if (yd['2120'] !== undefined) result.expense = Math.abs(parseFloat(yd['2120'])) * 1000;
-            if (yd['1600'] !== undefined) result.assets = parseFloat(yd['1600']) * 1000;
+            if (yd['2110'] !== undefined) result.revenue = parseFloat(yd['2110']);
+            if (yd['2400'] !== undefined) result.income = parseFloat(yd['2400']);
+            if (yd['2120'] !== undefined) result.expense = Math.abs(parseFloat(yd['2120']));
+            if (yd['1600'] !== undefined) result.assets = parseFloat(yd['1600']);
+            result._rawValues = { '2110': yd['2110'], '2400': yd['2400'], '2120': yd['2120'], '1600': yd['1600'] };
             result.source = 'ФНС (checko.ru)';
           }
         }
