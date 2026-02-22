@@ -3166,12 +3166,7 @@ let dpProviderModels = {
         { id: 'grok-3', label: 'Grok 3' },
         { id: 'grok-3-mini', label: 'Grok 3 Mini' }
     ],
-    ollama: [ // fallback — real list loaded from Ollama /api/tags via browser
-        { id: 'qwen3', label: 'Qwen 3' },
-        { id: 'llama3.3', label: 'Llama 3.3' },
-        { id: 'deepseek-r1', label: 'DeepSeek R1' },
-        { id: 'mistral', label: 'Mistral' }
-    ]
+    ollama: [] // loaded dynamically from Ollama /api/tags via browser
 };
 let DP_MODELS = dpProviderModels[dpActiveProvider] || dpProviderModels.anthropic;
 let dpSelectedProviders = (() => {
@@ -3181,7 +3176,7 @@ let dpSelectedProviders = (() => {
 function dpSaveSelectedProviders() {
     localStorage.setItem('dp_selected_providers', JSON.stringify(dpSelectedProviders));
 }
-const DP_DEFAULT_MODELS = { anthropic:'claude-sonnet-4-6', openai:'gpt-5.2', gemini:'gemini-2.5-flash', grok:'grok-4-1-fast-non-reasoning', ollama:'qwen3' };
+const DP_DEFAULT_MODELS = { anthropic:'claude-sonnet-4-6', openai:'gpt-5.2', gemini:'gemini-2.5-flash', grok:'grok-4-1-fast-non-reasoning', ollama:'' };
 let dpSavedModels = (() => {
     try { const v = JSON.parse(localStorage.getItem('dp_saved_models')); return (v && typeof v === 'object') ? v : {}; }
     catch(e) { return {}; }
@@ -3193,7 +3188,13 @@ function dpGetDefaultModel() {
     return dpSavedModels[dpActiveProvider] || DP_DEFAULT_MODELS[dpActiveProvider] || 'claude-sonnet-4-6';
 }
 function dpGetDefaultModelForProvider(provider) {
-    return dpSavedModels[provider] || DP_DEFAULT_MODELS[provider] || 'claude-sonnet-4-6';
+    if (dpSavedModels[provider]) return dpSavedModels[provider];
+    if (DP_DEFAULT_MODELS[provider]) return DP_DEFAULT_MODELS[provider];
+    // For Ollama: use first dynamically loaded model if available
+    if (provider === 'ollama' && dpProviderModels['ollama'] && dpProviderModels['ollama'].length > 0) {
+        return dpProviderModels['ollama'][0].id;
+    }
+    return 'claude-sonnet-4-6';
 }
 function dpModelOptionsHtml(provider, selectedModel) {
     const models = dpProviderModels[provider] || [];
@@ -3651,14 +3652,31 @@ async function dpRunAnalysis(name) {
         try {
             if (provider === 'ollama') {
                 // Ollama: GAS can't reach local network — call from browser
+                const ollamaBase = dpOllamaUrl || 'http://localhost:11434';
+                // Auto-detect model: fetch installed models, validate/override selection
+                let ollamaModel = model;
+                try {
+                    const tagsResp = await fetch(ollamaBase + '/api/tags');
+                    if (tagsResp.ok) {
+                        const tagsJson = await tagsResp.json();
+                        const installed = (tagsJson.models || []).map(m => m.name);
+                        if (installed.length === 0) throw new Error('Ollama: нет установленных моделей. Выполните: ollama pull <model>');
+                        dpProviderModels['ollama'] = installed.map(n => ({id: n, label: n}));
+                        if (!ollamaModel || !installed.some(n => n === ollamaModel || n.startsWith(ollamaModel + ':'))) {
+                            ollamaModel = installed[0];
+                        }
+                    }
+                } catch(tagErr) {
+                    if (tagErr.message.includes('нет установленных')) throw tagErr;
+                    // Can't reach Ollama — will fail below with clearer error
+                }
                 const bpParams = { name };
                 if (customContext) bpParams.context = customContext;
                 const prompts = await gsFetch('dprice_build_prompts', bpParams);
                 if (!prompts || !prompts.ok) throw new Error(prompts?.error || 'Failed to build prompts');
-                const ollamaBase = dpOllamaUrl || 'http://localhost:11434';
-                const rawText = await callOllamaFromBrowser(ollamaBase, model, prompts.systemPrompt, prompts.userMessage);
+                const rawText = await callOllamaFromBrowser(ollamaBase, ollamaModel, prompts.systemPrompt, prompts.userMessage);
                 const parsed = parseScoreJSONFrontend(rawText);
-                parsed.model = model;
+                parsed.model = ollamaModel;
                 parsed.provider = provider;
                 if (prompts._sources) parsed._sources = prompts._sources;
                 dpCache[cacheKey] = parsed;
@@ -3727,8 +3745,22 @@ async function dpRunAnalysis(name) {
                 }
             } else {
                 // Mixed mode: Ollama from browser + cloud via GAS (parallel)
-                const ollamaModel = dpGetDefaultModelForProvider('ollama');
                 const ollamaBase = dpOllamaUrl || 'http://localhost:11434';
+                // Auto-detect Ollama model from installed list
+                let ollamaModel = dpGetDefaultModelForProvider('ollama');
+                try {
+                    const tagsResp = await fetch(ollamaBase + '/api/tags');
+                    if (tagsResp.ok) {
+                        const tagsJson = await tagsResp.json();
+                        const installed = (tagsJson.models || []).map(m => m.name);
+                        if (installed.length > 0) {
+                            dpProviderModels['ollama'] = installed.map(n => ({id: n, label: n}));
+                            if (!ollamaModel || !installed.some(n => n === ollamaModel || n.startsWith(ollamaModel + ':'))) {
+                                ollamaModel = installed[0];
+                            }
+                        }
+                    }
+                } catch(e) { /* will handle below */ }
 
                 // Start both in parallel
                 const bpParams = { name };
@@ -5988,7 +6020,7 @@ function callGrok(apiKey, model, systemPrompt, userMessage) {
   var resp = UrlFetchApp.fetch(url, opts);
   var code = resp.getResponseCode();
   if (code === 401) throw new Error('GROK_KEY_INVALID');
-  if (code === 403) throw new Error('Grok: нет кредитов/лицензии. Пополните баланс на console.x.ai');
+  if (code === 403) throw new Error('Grok 403: проверьте что API-ключ принадлежит team с кредитами и имеет разрешение chat:write (console.x.ai)');
   if (code !== 200) throw new Error('Grok API error: ' + code + ' ' + resp.getContentText().substring(0, 200));
   var json = JSON.parse(resp.getContentText());
   if (!json.choices || json.choices.length === 0) throw new Error('Empty Grok response');
@@ -6230,6 +6262,7 @@ function parseLLMResponse(provider, resp) {
     return json.candidates[0].content.parts[0].text;
   } else if (provider === 'grok') {
     if (code === 401) throw new Error('GROK_KEY_INVALID');
+    if (code === 403) throw new Error('Grok 403: проверьте что API-ключ принадлежит team с кредитами и имеет разрешение chat:write (console.x.ai)');
     if (code !== 200) throw new Error('Grok API error: ' + code + ' ' + body.substring(0, 200));
     var json = JSON.parse(body);
     if (!json.choices || json.choices.length === 0) throw new Error('Empty Grok response');
