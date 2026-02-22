@@ -5891,7 +5891,7 @@ function callClaude(apiKey, model, systemPrompt, userMessage) {
   var url = 'https://api.anthropic.com/v1/messages';
   var payload = {
     model: model,
-    max_tokens: 2000,
+    max_tokens: 4000,
     system: systemPrompt,
     messages: [{role: 'user', content: userMessage}]
   };
@@ -5914,16 +5914,28 @@ function callClaude(apiKey, model, systemPrompt, userMessage) {
   return json.content[0].text;
 }
 
+function openaiNeedsNewTokenParam(model) {
+  // GPT-5.x, o-series, codex require max_completion_tokens instead of max_tokens
+  return /^(gpt-5|o[1-5]|codex)/.test(model);
+}
+function openaiIsOSeries(model) {
+  // o-series models do NOT support temperature, top_p, penalties
+  return /^o[1-5]/.test(model);
+}
 function callOpenAI(apiKey, model, systemPrompt, userMessage) {
   var url = 'https://api.openai.com/v1/chat/completions';
   var payload = {
     model: model,
-    max_tokens: 2000,
     messages: [
       {role: 'system', content: systemPrompt},
       {role: 'user', content: userMessage}
     ]
   };
+  if (openaiNeedsNewTokenParam(model)) {
+    payload.max_completion_tokens = 4000;
+  } else {
+    payload.max_tokens = 4000;
+  }
   var opts = {
     method: 'post',
     contentType: 'application/json',
@@ -5945,7 +5957,7 @@ function callGemini(apiKey, model, systemPrompt, userMessage) {
   var payload = {
     systemInstruction: { parts: [{ text: systemPrompt }] },
     contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-    generationConfig: { maxOutputTokens: 2000 }
+    generationConfig: { maxOutputTokens: 4000 }
   };
   var opts = {
     method: 'post',
@@ -5966,7 +5978,7 @@ function callGrok(apiKey, model, systemPrompt, userMessage) {
   var url = 'https://api.x.ai/v1/chat/completions';
   var payload = {
     model: model,
-    max_tokens: 2000,
+    max_tokens: 4000,
     messages: [
       {role: 'system', content: systemPrompt},
       {role: 'user', content: userMessage}
@@ -6149,18 +6161,21 @@ function buildLLMRequest(provider, model, systemPrompt, userMessage) {
       method: 'post',
       contentType: 'application/json',
       headers: { 'x-api-key': aKey, 'anthropic-version': '2023-06-01' },
-      payload: JSON.stringify({ model: model, max_tokens: 2000, system: systemPrompt, messages: [{role:'user', content: userMessage}] }),
+      payload: JSON.stringify({ model: model, max_tokens: 4000, system: systemPrompt, messages: [{role:'user', content: userMessage}] }),
       muteHttpExceptions: true
     };
   } else if (provider === 'openai') {
     var oKey = getMetaKey('openaiKey');
     if (!oKey) throw new Error('NO_OPENAI_KEY');
+    var oPayload = { model: model, messages: [{role:'system', content: systemPrompt},{role:'user', content: userMessage}] };
+    if (openaiNeedsNewTokenParam(model)) { oPayload.max_completion_tokens = 4000; }
+    else { oPayload.max_tokens = 4000; }
     return {
       url: 'https://api.openai.com/v1/chat/completions',
       method: 'post',
       contentType: 'application/json',
       headers: { 'Authorization': 'Bearer ' + oKey },
-      payload: JSON.stringify({ model: model, max_tokens: 2000, messages: [{role:'system', content: systemPrompt},{role:'user', content: userMessage}] }),
+      payload: JSON.stringify(oPayload),
       muteHttpExceptions: true
     };
   } else if (provider === 'gemini') {
@@ -6170,7 +6185,7 @@ function buildLLMRequest(provider, model, systemPrompt, userMessage) {
       url: 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + gKey,
       method: 'post',
       contentType: 'application/json',
-      payload: JSON.stringify({ systemInstruction: { parts: [{ text: systemPrompt }] }, contents: [{ role:'user', parts: [{ text: userMessage }] }], generationConfig: { maxOutputTokens: 2000 } }),
+      payload: JSON.stringify({ systemInstruction: { parts: [{ text: systemPrompt }] }, contents: [{ role:'user', parts: [{ text: userMessage }] }], generationConfig: { maxOutputTokens: 4000 } }),
       muteHttpExceptions: true
     };
   } else if (provider === 'grok') {
@@ -6181,7 +6196,7 @@ function buildLLMRequest(provider, model, systemPrompt, userMessage) {
       method: 'post',
       contentType: 'application/json',
       headers: { 'Authorization': 'Bearer ' + xKey },
-      payload: JSON.stringify({ model: model, max_tokens: 2000, messages: [{role:'system', content: systemPrompt},{role:'user', content: userMessage}] }),
+      payload: JSON.stringify({ model: model, max_tokens: 4000, messages: [{role:'system', content: systemPrompt},{role:'user', content: userMessage}] }),
       muteHttpExceptions: true
     };
   } else if (provider === 'ollama') {
