@@ -451,6 +451,8 @@
         .lv-actions button { padding:4px 10px; border-radius:4px; font-size:11px; cursor:pointer;
             border:1px solid var(--border); background:var(--panel); color:var(--dim); white-space:nowrap; }
         .lv-actions button:hover { border-color:var(--accent); color:var(--text); }
+        .lv-actions .lv-edit { color:var(--accent); }
+        .lv-actions .lv-edit:hover { border-color:var(--accent); background:rgba(99,102,241,0.1); }
         .lv-actions .lv-del { color:var(--del-text); }
         .lv-actions .lv-del:hover { border-color:var(--del-text); background:var(--del-bg); }
         .lv-actions .lv-news { color:var(--green); }
@@ -1311,34 +1313,32 @@ function preloadLogos() {
     return new Promise(resolve => {
         const done = () => { loaded++; if (loaded >= total) { logosReady = true; resolve(); } };
 
-        if (isFileProtocol) {
-            // file:// — can't fetch or use crossOrigin. Use initials for 3D canvas.
-            // 2D view will use <img> tags directly.
-            Object.keys(LOGO_URLS).forEach(name => {
-                logoCache[name] = generateInitialsLogo(name);
+        // Load logos via <img> (no CORS issues) — draw to canvas for 3D textures
+        Object.entries(LOGO_URLS).forEach(([name, url]) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                try {
+                    const c = document.createElement('canvas');
+                    c.width = 64; c.height = 64;
+                    const ctx = c.getContext('2d');
+                    ctx.drawImage(img, 0, 0, 64, 64);
+                    c.toDataURL(); // test CORS — throws if tainted
+                    logoCache[name] = img;
+                } catch(e) {
+                    logoCache[name] = generateInitialsLogo(name);
+                }
                 done();
+            };
+            img.onerror = () => { logoCache[name] = generateInitialsLogo(name); done(); };
+            img.src = url;
+        });
+        setTimeout(() => {
+            Object.keys(LOGO_URLS).forEach(name => {
+                if (!logoCache[name]) logoCache[name] = generateInitialsLogo(name);
             });
-        } else {
-            // http(s):// — fetch+blob works, real logos in 3D
-            Object.entries(LOGO_URLS).forEach(([name, url]) => {
-                fetch(url, { mode: 'cors' })
-                    .then(r => { if (!r.ok) throw new Error(); return r.blob(); })
-                    .then(blob => {
-                        const objUrl = URL.createObjectURL(blob);
-                        const img = new Image();
-                        img.onload = () => { logoCache[name] = img; done(); };
-                        img.onerror = () => { logoCache[name] = generateInitialsLogo(name); done(); };
-                        img.src = objUrl;
-                    })
-                    .catch(() => { logoCache[name] = generateInitialsLogo(name); done(); });
-            });
-            setTimeout(() => {
-                Object.keys(LOGO_URLS).forEach(name => {
-                    if (!logoCache[name]) logoCache[name] = generateInitialsLogo(name);
-                });
-                logosReady = true; resolve();
-            }, 5000);
-        }
+            logosReady = true; resolve();
+        }, 5000);
     });
 }
 preloadLogos();
@@ -2780,6 +2780,93 @@ function openAddEventModal() {
             build(curData, true);
             rebuildCurrentView();
         }
+        closeFormModal();
+    };
+}
+
+function openEditEventModal(idx) {
+    const em = EVENTS_META[idx];
+    if (!em) return;
+    const oldName = em.name;
+
+    let weekOpts = '';
+    for (let w = 1; w <= nWeeks; w++) weekOpts += `<option value="${w-1}"${(w-1) === em.weekStart ? ' selected' : ''}>${w}w</option>`;
+
+    const usedColors = new Set(EVENTS_META.map(e => e.color));
+    let palHtml = '';
+    PALETTE.forEach(c => {
+        const used = usedColors.has(c) && c !== em.color ? ' style="opacity:0.3"' : '';
+        palHtml += `<div class="color-sw" data-color="${c}" style="background:${c}"${used}></div>`;
+    });
+
+    showFormModal(`
+        <h2>Редактировать мероприятие</h2>
+        <label>Название</label>
+        <input type="text" id="fmEvName" value="${em.name.replace(/"/g, '&quot;')}">
+        <label>Неделя начала</label>
+        <select id="fmEvWeek">${weekOpts}</select>
+        <label>Продолжительность</label>
+        <div class="fm-row">
+            <div><input type="number" id="fmEvDur" value="${em.duration}" min="1" max="99"></div>
+            <div><select id="fmEvDurUnit">
+                <option value="d">дней</option>
+                <option value="w" selected>недель</option>
+                <option value="m">месяцев</option>
+            </select></div>
+        </div>
+        <label>Цвет</label>
+        <div class="color-pal" id="fmPalette">${palHtml}</div>
+        <div class="fm-actions">
+            <button class="fm-cancel" id="fmCancel">Отмена</button>
+            <button class="fm-ok" id="fmOk">Сохранить</button>
+        </div>
+    `);
+
+    let selColor = em.color;
+    const palEl = document.getElementById('fmPalette');
+    function markSel() {
+        palEl.querySelectorAll('.color-sw').forEach(s => s.classList.toggle('sel', s.dataset.color === selColor));
+    }
+    markSel();
+    palEl.onclick = e => {
+        const sw = e.target.closest('.color-sw');
+        if (sw) { selColor = sw.dataset.color; markSel(); }
+    };
+
+    document.getElementById('fmCancel').onclick = closeFormModal;
+    document.getElementById('fmOk').onclick = () => {
+        const name = document.getElementById('fmEvName').value.trim();
+        if (!name) { document.getElementById('fmEvName').style.borderColor = 'var(--error-border)'; return; }
+        // Check duplicate only if name changed
+        if (name !== oldName && EVENTS_META.some(e => e.name === name)) {
+            document.getElementById('fmEvName').style.borderColor = 'var(--error-border)';
+            document.getElementById('fmEvName').value = '';
+            document.getElementById('fmEvName').placeholder = 'Такое мероприятие уже есть!';
+            return;
+        }
+        const weekStart = parseInt(document.getElementById('fmEvWeek').value);
+        const durVal = parseInt(document.getElementById('fmEvDur').value) || 1;
+        const durUnit = document.getElementById('fmEvDurUnit').value;
+        let durationWeeks;
+        if (durUnit === 'd') durationWeeks = Math.max(1, Math.ceil(durVal / 7));
+        else if (durUnit === 'm') durationWeeks = durVal * 4;
+        else durationWeeks = durVal;
+
+        // Update event
+        em.name = name;
+        em.weekStart = weekStart;
+        em.duration = durationWeeks;
+        em.color = selColor;
+
+        // If name changed, update all linked activities
+        if (name !== oldName && curData && curData.activities) {
+            curData.activities.forEach(a => { if (a.event === oldName) a.event = name; });
+        }
+
+        rebuildEventsDerived();
+        markDirty();
+        if (curData) build(curData, true);
+        rebuildCurrentView();
         closeFormModal();
     };
 }
@@ -4389,6 +4476,7 @@ function buildEventsView() {
         html += `<textarea class="lv-notes" data-ev-idx="${idx}" placeholder="Заметки...">${notes}</textarea>`;
         html += `</div>`;
         html += `<div class="lv-actions">`;
+        html += `<button class="lv-edit" data-ev-edit="${idx}">Редактировать</button>`;
         html += `<button class="lv-del" data-ev-del="${idx}">Удалить</button>`;
         html += `</div>`;
         html += `</div>`;
@@ -4423,6 +4511,9 @@ function buildEventsView() {
                 buildEventsView();
             });
         };
+    });
+    ve.querySelectorAll('[data-ev-edit]').forEach(btn => {
+        btn.onclick = () => openEditEventModal(parseInt(btn.dataset.evEdit));
     });
     const addBtn = document.getElementById('evAddBtn');
     if (addBtn) addBtn.onclick = () => { openAddEventModal(); };
