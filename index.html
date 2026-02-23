@@ -3273,7 +3273,7 @@ function dpScoreColor(score) {
     return '#27ae60';
 }
 
-function dpRenderScore(name, data) {
+function dpRenderScore(name, data, stageInfo) {
     const score = parseFloat(data.dprice) || 0;
     const color = dpScoreColor(score);
     const circumference = 2 * Math.PI * 52;
@@ -3306,6 +3306,27 @@ function dpRenderScore(name, data) {
         }
     }
 
+    // Next step readiness block (only when stageInfo was provided and LLM returned it)
+    let nextStepHtml = '';
+    if (data.next_step_readiness) {
+        const nsr = data.next_step_readiness;
+        const nsScore = parseFloat(nsr.score) || 0;
+        const nsColor = dpScoreColor(nsScore);
+        const nsPct = nsScore * 10;
+        const nextName = stageInfo ? stageInfo.nextStage : '';
+        const hasNsComment = nsr.comment && nsr.comment.trim();
+        nextStepHtml = `
+            <div style="margin:8px 0;padding:8px 10px;background:var(--hover-bg);border-radius:8px;border-left:3px solid ${nsColor}">
+                <div class="dp-factor${hasNsComment ? '' : ' no-expand'}" onclick="this.classList.toggle('expanded')" style="border:none;padding:0">
+                    <div class="dp-factor-name" style="font-weight:600">\u{1F3AF} \u0413\u043e\u0442\u043e\u0432\u043d\u043e\u0441\u0442\u044c \u043a: ${escHtml(nextName)}</div>
+                    <div class="dp-factor-score" style="color:${nsColor};font-size:14px;font-weight:700">${nsScore.toFixed(1)}/10</div>
+                    <div class="dp-factor-bar"><div class="dp-factor-bar-fill" style="width:${nsPct}%;background:${nsColor}"></div></div>
+                    ${hasNsComment ? `<div class="dp-factor-comment">${escHtml(nsr.comment)}</div>` : ''}
+                </div>
+                ${stageInfo ? `<div style="font-size:10px;color:var(--dim);margin-top:4px">\u0422\u0435\u043a\u0443\u0449\u0438\u0439 \u044d\u0442\u0430\u043f: ${escHtml(stageInfo.currentStage)} (\u044d\u0442\u0430\u043f ${stageInfo.currentStageOrder} \u0438\u0437 ${stageInfo.totalStages})</div>` : ''}
+            </div>`;
+    }
+
     const summaryHtml = data.summary ? `<div class="dp-summary">${escHtml(data.summary)}</div>` : '';
     const recHtml = data.recommendation ? `<div class="dp-recommendation">${escHtml(data.recommendation)}</div>` : '';
     const allModels = Object.values(dpProviderModels).flat();
@@ -3315,8 +3336,8 @@ function dpRenderScore(name, data) {
     return `
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px">
             <div class="fin-header" style="margin:0">
-                <h2>🎯 DPrice: ${escHtml(name)}</h2>
-                <div class="fin-sub">AI-оценка восприимчивости к DPrice${modelLabel ? ' (' + escHtml(modelLabel) + ')' : ''}</div>
+                <h2>\u{1F3AF} DPrice: ${escHtml(name)}</h2>
+                <div class="fin-sub">AI-\u043e\u0446\u0435\u043d\u043a\u0430 \u0432\u043e\u0441\u043f\u0440\u0438\u0438\u043c\u0447\u0438\u0432\u043e\u0441\u0442\u0438 \u043a DPrice${modelLabel ? ' (' + escHtml(modelLabel) + ')' : ''}</div>
             </div>
             <button class="fm-ok" id="fmCancel" style="flex-shrink:0;padding:5px 18px;font-size:12px">OK</button>
         </div>
@@ -3328,17 +3349,18 @@ function dpRenderScore(name, data) {
             </svg>
             <div class="dp-score-num">${score.toFixed(1)}<small>/10</small></div>
         </div>
+        ${nextStepHtml}
         <div class="dp-factors">${factorsHtml}</div>
         ${summaryHtml}
         ${recHtml}
         <div class="fin-source">
             Анализ: ${escHtml(providerLabel)} | <a href="https://dprice.ru" target="_blank">dprice.ru</a>
-            ${data._sources ? `<br>Источники: финансы ${data._sources.finance ? '✅' : '❌'} · сайт ${data._sources.website > 0 ? '✅ ' + data._sources.website + ' зн.' : '❌'} · новости ${data._sources.news > 0 ? '✅ ' + data._sources.news + ' зн.' : '❌ не найдены'}${data._sources.context > 0 ? ' · контекст ✅' : ''}` : ''}
+            ${data._sources ? `<br>Источники: финансы ${data._sources.finance ? '✅' : '❌'} · сайт ${data._sources.website > 0 ? '✅ ' + data._sources.website + ' зн.' : '❌'} · новости ${data._sources.news > 0 ? '✅ ' + data._sources.news + ' зн.' : '❌ не найдены'}${data._sources.context > 0 ? ' · контекст ✅' : ''}${stageInfo ? ' · воронка ✅' : ''}` : ''}
         </div>
     `;
 }
 
-function dpRenderMultiScore(name, data) {
+function dpRenderMultiScore(name, data, stageInfo) {
     const avg = data.averaged || {};
     const provResults = data.providers || {};
     const errors = data._errors || {};
@@ -3455,11 +3477,46 @@ function dpRenderMultiScore(name, data) {
             </details>`;
     }
 
+    // Next step readiness — average across providers
+    let nextStepMultiHtml = '';
+    if (stageInfo) {
+        let nsSum = 0, nsCnt = 0;
+        let nsComments = '';
+        for (const pk of provKeys) {
+            const pr = provResults[pk];
+            if (pr.next_step_readiness) {
+                const s = parseFloat(pr.next_step_readiness.score) || 0;
+                nsSum += s; nsCnt++;
+                if (pr.next_step_readiness.comment) {
+                    const pLabel = LLM_PROVIDERS[pk]?.label || pk;
+                    nsComments += (nsComments ? '\n\n' : '') + '\u3010' + pLabel + ' \u2014 ' + s.toFixed(1) + '\u3011\n' + pr.next_step_readiness.comment;
+                }
+            }
+        }
+        if (nsCnt > 0) {
+            const nsAvg = nsSum / nsCnt;
+            const nsColor = dpScoreColor(nsAvg);
+            const nsPct = nsAvg * 10;
+            const nextName = stageInfo.nextStage || '';
+            const hasNsComment = nsComments.length > 0;
+            nextStepMultiHtml = `
+                <div style="margin:8px 0;padding:8px 10px;background:var(--hover-bg);border-radius:8px;border-left:3px solid ${nsColor}">
+                    <div class="dp-factor${hasNsComment ? '' : ' no-expand'}" onclick="this.classList.toggle('expanded')" style="border:none;padding:0">
+                        <div class="dp-factor-name" style="font-weight:600">\u{1F3AF} \u0413\u043e\u0442\u043e\u0432\u043d\u043e\u0441\u0442\u044c \u043a: ${escHtml(nextName)}</div>
+                        <div class="dp-factor-score" style="color:${nsColor};font-size:14px;font-weight:700">${nsAvg.toFixed(1)}/10</div>
+                        <div class="dp-factor-bar"><div class="dp-factor-bar-fill" style="width:${nsPct}%;background:${nsColor}"></div></div>
+                        ${hasNsComment ? `<div class="dp-factor-comment">${escHtml(nsComments)}</div>` : ''}
+                    </div>
+                    <div style="font-size:10px;color:var(--dim);margin-top:4px">\u0422\u0435\u043a\u0443\u0449\u0438\u0439 \u044d\u0442\u0430\u043f: ${escHtml(stageInfo.currentStage)} (\u044d\u0442\u0430\u043f ${stageInfo.currentStageOrder} \u0438\u0437 ${stageInfo.totalStages})</div>
+                </div>`;
+        }
+    }
+
     return `
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px">
             <div class="fin-header" style="margin:0">
-                <h2>🎯 DPrice: ${escHtml(name)}</h2>
-                <div class="fin-sub">Ансамблевый анализ (${provKeys.length} LLM)</div>
+                <h2>\u{1F3AF} DPrice: ${escHtml(name)}</h2>
+                <div class="fin-sub">\u0410\u043d\u0441\u0430\u043c\u0431\u043b\u0435\u0432\u044b\u0439 \u0430\u043d\u0430\u043b\u0438\u0437 (${provKeys.length} LLM)</div>
             </div>
             <button class="fm-ok" id="fmCancel" style="flex-shrink:0;padding:5px 18px;font-size:12px">OK</button>
         </div>
@@ -3476,7 +3533,8 @@ function dpRenderMultiScore(name, data) {
                 ${smallRingsHtml}
             </div>
         </div>
-        <div style="font-size:11px;text-align:center;color:var(--dim);margin-bottom:8px">Среднее арифметическое по ${provKeys.length} LLM</div>
+        <div style="font-size:11px;text-align:center;color:var(--dim);margin-bottom:8px">\u0421\u0440\u0435\u0434\u043d\u0435\u0435 \u0430\u0440\u0438\u0444\u043c\u0435\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0435 \u043f\u043e ${provKeys.length} LLM</div>
+        ${nextStepMultiHtml}
         <div class="dp-factors">${avgFactorsHtml}</div>
         <div style="margin-top:10px">
             <div style="font-size:12px;font-weight:600;margin-bottom:4px;color:var(--text)">Детали по каждому LLM:</div>
@@ -3485,7 +3543,7 @@ function dpRenderMultiScore(name, data) {
         ${Object.keys(errors).length > 0 ? `<div style="margin-top:8px;font-size:11px;color:#e74c3c">Ошибки: ${Object.entries(errors).map(([k,v]) => escHtml((LLM_PROVIDERS[k]?.label || k) + ': ' + v)).join('; ')}</div>` : ''}
         <div class="fin-source" style="margin-top:10px">
             Анализ: ${provKeys.map(p => escHtml(LLM_PROVIDERS[p]?.label || p)).join(' + ')} | <a href="https://dprice.ru" target="_blank">dprice.ru</a>
-            ${sources ? `<br>Источники: финансы ${sources.finance ? '✅' : '❌'} · сайт ${sources.website > 0 ? '✅ ' + sources.website + ' зн.' : '❌'} · новости ${sources.news > 0 ? '✅ ' + sources.news + ' зн.' : '❌ не найдены'}${sources.context > 0 ? ' · контекст ✅' : ''}` : ''}
+            ${sources ? `<br>Источники: финансы ${sources.finance ? '✅' : '❌'} · сайт ${sources.website > 0 ? '✅ ' + sources.website + ' зн.' : '❌'} · новости ${sources.news > 0 ? '✅ ' + sources.news + ' зн.' : '❌ не найдены'}${sources.context > 0 ? ' · контекст ✅' : ''}${stageInfo ? ' · воронка ✅' : ''}` : ''}
         </div>
     `;
 }
@@ -3611,6 +3669,10 @@ async function showDPriceModal(name) {
             <label style="font-size:11px;font-weight:600;color:var(--dim);display:block;margin-bottom:3px">Дополнительный контекст (необязательно):</label>
             <textarea id="dpCustomContext" placeholder="Например: компания недавно внедрила BIM, руководство активно ищет IT-решения, есть контакт с CTO..." style="width:100%;min-height:50px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--text);font-size:11px;resize:vertical;font-family:inherit"></textarea>
             <div style="font-size:10px;color:var(--dim);margin-top:1px">Информация о застройщике или продукте DPrice для AI-анализа</div>
+            <label style="display:flex;align-items:center;gap:6px;font-size:11px;margin-top:6px;cursor:pointer">
+                <input type="checkbox" id="dpIncludeStageInfo" ${localStorage.getItem('dp_include_stage') !== 'false' ? 'checked' : ''}>
+                Учитывать этап воронки продаж
+            </label>
         </div>
         <div id="dpResultArea">
             <div class="fin-not-found" style="padding:14px 0">
@@ -3624,6 +3686,8 @@ async function showDPriceModal(name) {
     `);
 
     setTimeout(() => {
+        const stageChk = document.getElementById('dpIncludeStageInfo');
+        if (stageChk) stageChk.onchange = () => localStorage.setItem('dp_include_stage', stageChk.checked);
         dpBindProviderCheckboxes('dpModelSelect');
         // Auto-fetch Ollama models from browser on modal open
         if (dpActiveProvider === 'ollama' || dpSelectedProviders.includes('ollama')) {
@@ -3657,6 +3721,30 @@ async function dpRunAnalysis(name) {
     const customContext = contextInput ? contextInput.value.trim() : '';
     const resultArea = document.getElementById('dpResultArea');
     if (!resultArea) return;
+
+    // Collect pipeline stage info if checkbox is checked
+    let stageInfo = null;
+    const includeStage = document.getElementById('dpIncludeStageInfo')?.checked ?? true;
+    if (includeStage && curData && curData.activities) {
+        const companyActivities = curData.activities
+            .filter(a => a.company === name)
+            .sort((a, b) => (a.stageOrder || 0) - (b.stageOrder || 0));
+        if (companyActivities.length > 0) {
+            const maxStage = companyActivities.reduce((max, a) => Math.max(max, a.stageOrder || 0), 0);
+            const currentStageObj = STAGES.find(s => s.order === maxStage);
+            const nextStageObj = STAGES.find(s => s.order === maxStage + 1);
+            const stageHistory = companyActivities.map(a =>
+                `\u2022 ${a.stageName || a.stage} (${a.date || '?'}) \u2014 ${a.event || ''}, \u043a\u043e\u043d\u0442\u0430\u043a\u0442: ${a.contact || '?'}${a.position ? ' (' + a.position + ')' : ''}`
+            ).join('\n');
+            stageInfo = {
+                currentStage: currentStageObj ? currentStageObj.name : '\u041d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u043e',
+                currentStageOrder: maxStage,
+                totalStages: STAGES.length,
+                nextStage: nextStageObj ? nextStageObj.name : '\u0412\u0441\u0435 \u044d\u0442\u0430\u043f\u044b \u043f\u0440\u043e\u0439\u0434\u0435\u043d\u044b',
+                history: stageHistory
+            };
+        }
+    }
 
     if (dpSelectedProviders.length <= 1) {
         // Single provider mode
@@ -3695,6 +3783,7 @@ async function dpRunAnalysis(name) {
                 }
                 const bpParams = { name };
                 if (customContext) bpParams.context = customContext;
+                if (stageInfo) bpParams.stageInfo = stageInfo;
                 const prompts = await gsFetch('dprice_build_prompts', bpParams);
                 if (!prompts || !prompts.ok) throw new Error(prompts?.error || 'Failed to build prompts');
                 const rawText = await callOllamaFromBrowser(ollamaBase, ollamaModel, prompts.systemPrompt, prompts.userMessage);
@@ -3704,18 +3793,19 @@ async function dpRunAnalysis(name) {
                 if (prompts._sources) parsed._sources = prompts._sources;
                 dpCache[cacheKey] = parsed;
                 dpSaveCache();
-                dpOpenModal(dpRenderScore(name, parsed));
+                dpOpenModal(dpRenderScore(name, parsed, stageInfo));
             } else {
                 // Cloud provider: standard GAS path
                 const params = { name, model, provider };
                 if (customContext) params.context = customContext;
+                if (stageInfo) params.stageInfo = stageInfo;
                 const resp = await gsFetch('dprice_score', params);
                 if (resp && resp.ok && resp.data) {
                     resp.data.model = model;
                     resp.data.provider = provider;
                     dpCache[cacheKey] = resp.data;
                     dpSaveCache();
-                    dpOpenModal(dpRenderScore(name, resp.data));
+                    dpOpenModal(dpRenderScore(name, resp.data, stageInfo));
                 } else {
                     const err = resp?.error || 'Неизвестная ошибка';
                     if (err.startsWith('NO_') && err.endsWith('_KEY')) {
@@ -3753,11 +3843,12 @@ async function dpRunAnalysis(name) {
                 // All cloud providers — standard GAS path
                 const params = { name, providers: providersArr };
                 if (customContext) params.context = customContext;
+                if (stageInfo) params.stageInfo = stageInfo;
                 const resp = await gsFetch('dprice_score_multi', params);
                 if (resp && resp.ok && resp.data) {
                     dpCache[cacheKey] = resp.data;
                     dpSaveCache();
-                    dpOpenModal(dpRenderMultiScore(name, resp.data));
+                    dpOpenModal(dpRenderMultiScore(name, resp.data, stageInfo));
                 } else {
                     const err = resp?.error || 'Неизвестная ошибка';
                     if (err.includes('NO_VALID_PROVIDERS') || err.includes('ALL_PROVIDERS_FAILED')) {
@@ -3788,9 +3879,13 @@ async function dpRunAnalysis(name) {
                 // Start both in parallel
                 const bpParams = { name };
                 if (customContext) bpParams.context = customContext;
+                if (stageInfo) bpParams.stageInfo = stageInfo;
                 const promptsPromise = gsFetch('dprice_build_prompts', bpParams);
+                const cloudMultiParams = { name, providers: cloudProviders };
+                if (customContext) cloudMultiParams.context = customContext;
+                if (stageInfo) cloudMultiParams.stageInfo = stageInfo;
                 const cloudPromise = cloudProviders.length > 0
-                    ? gsFetch('dprice_score_multi', { name, providers: cloudProviders, ...(customContext ? {context: customContext} : {}) })
+                    ? gsFetch('dprice_score_multi', cloudMultiParams)
                     : Promise.resolve(null);
 
                 const [prompts, cloudResp] = await Promise.all([promptsPromise, cloudPromise]);
@@ -3831,7 +3926,7 @@ async function dpRunAnalysis(name) {
 
                 dpCache[cacheKey] = mergedData;
                 dpSaveCache();
-                dpOpenModal(dpRenderMultiScore(name, mergedData));
+                dpOpenModal(dpRenderMultiScore(name, mergedData, stageInfo));
             }
         } catch(e) {
             resultArea.innerHTML = `<div class="fin-not-found"><p>Ошибка: ${escHtml(e.message)}</p></div>`;
@@ -5464,9 +5559,10 @@ function doGet(e) {
     var provider = d.provider || getMetaKey('activeProvider') || 'anthropic';
     var model = d.model || getDefaultModelForProvider(provider);
     var context = d.context || '';
+    var stageInfo = d.stageInfo || null;
     if (!name) return jsonResp({ok:false, error:'no company name'});
     try {
-      var result = scoreDPrice(name, provider, model, context);
+      var result = scoreDPrice(name, provider, model, context, stageInfo);
       return jsonResp({ok:true, data: result});
     } catch(err) {
       return jsonResp({ok:false, error: err.message});
@@ -5477,12 +5573,13 @@ function doGet(e) {
     var d = p.d ? JSON.parse(p.d) : {};
     var name = d.name || '';
     var context = d.context || '';
+    var stageInfo = d.stageInfo || null;
     if (!name) return jsonResp({ok:false, error:'no company name'});
     try {
       var data = gatherDPriceData(name);
-      var prompts = buildDPricePrompts(name, data.finData, data.websiteText, data.newsText, context);
+      var prompts = buildDPricePrompts(name, data.finData, data.websiteText, data.newsText, context, stageInfo);
       return jsonResp({ok:true, systemPrompt: prompts.systemPrompt, userMessage: prompts.userMessage,
-        _sources: { finance: !!data.finData.found, website: data.websiteText.length, news: data.newsText.length, context: context ? context.length : 0 }});
+        _sources: { finance: !!data.finData.found, website: data.websiteText.length, news: data.newsText.length, context: context ? context.length : 0, stage: !!stageInfo }});
     } catch(err) {
       return jsonResp({ok:false, error: err.message});
     }
@@ -5493,10 +5590,11 @@ function doGet(e) {
     var name = d.name || '';
     var providers = d.providers || [];
     var context = d.context || '';
+    var stageInfo = d.stageInfo || null;
     if (!name) return jsonResp({ok:false, error:'no company name'});
     if (!providers.length) return jsonResp({ok:false, error:'no providers selected'});
     try {
-      var result = scoreDPriceMulti(name, providers, context);
+      var result = scoreDPriceMulti(name, providers, context, stageInfo);
       return jsonResp({ok:true, data: result});
     } catch(err) {
       return jsonResp({ok:false, error: err.message});
@@ -6119,7 +6217,7 @@ function gatherDPriceData(companyName) {
   return { finData: finData, websiteText: websiteText, newsText: newsText };
 }
 
-function buildDPricePrompts(companyName, finData, websiteText, newsText, customContext) {
+function buildDPricePrompts(companyName, finData, websiteText, newsText, customContext, stageInfo) {
   var systemPrompt = 'Ты - эксперт-аналитик в области PropTech и строительной отрасли России. ' +
     'Компания DPrice (dprice.ru) разработала систему динамического ценообразования для застройщиков. ' +
     'DPrice анализирует текущий и исторический спрос и предлагает оптимальный закон изменения цен для максимизации прибыли застройщика. ' +
@@ -6141,11 +6239,19 @@ function buildDPricePrompts(companyName, finData, websiteText, newsText, customC
     'КРИТИЧЕСКИ ВАЖНО для financial_stability: Бухгалтерская отчётность может быть устаревшей (за прошлый год). Новости и текущие события ПРИОРИТЕТНЕЕ формальных финансовых показателей. Если в новостях упоминаются: запросы о финансовой помощи, реструктуризация долгов, проблемы с кредиторами, падение продаж, судебные иски, задержки строительства — оценка financial_stability должна быть НИЗКОЙ (1-4), независимо от формальной выручки и активов. Высокая выручка при наличии критических проблем — это НЕ финансовая устойчивость.\\n\\n' +
     'Ты обязан учитывать ВСЮ предоставленную информацию, включая разделы НОВОСТИ и ДОПОЛНИТЕЛЬНЫЙ КОНТЕКСТ. Информация из новостей и от аналитика имеет БОЛЬШИЙ вес, чем формальные бухгалтерские показатели, т.к. она более актуальна.\\n\\n' +
     'Итоговый балл dprice (0-10) - интегральная оценка вероятности покупки DPrice в ближайшее время.\\n\\n' +
+    (stageInfo ? 'ВАЖНО: Предоставлена информация о текущем этапе воронки продаж. ' +
+    'Учитывай её при анализе: оценивай не абстрактную восприимчивость, а конкретную готовность ' +
+    'компании перейти на СЛЕДУЮЩИЙ этап воронки. Анализируй:\\n' +
+    '- Какие этапы уже пройдены и как быстро\\n' +
+    '- На каком этапе сейчас находится лид\\n' +
+    '- Есть ли признаки готовности к следующему шагу\\n' +
+    'Добавь в JSON дополнительное поле "next_step_readiness" с оценкой готовности перехода на следующий этап.\\n\\n' : '') +
     'Ответь строго в формате JSON без markdown-обертки:\\n' +
     '{"dprice": число, "factors": {"financial_stability": {"score": число, "comment": "краткий комментарий"}, ' +
     '"innovation_readiness": {"score": число, "comment": "..."}, "business_aggressiveness": {"score": число, "comment": "..."}, ' +
     '"management_activity": {"score": число, "comment": "..."}, "digital_presence": {"score": число, "comment": "..."}, ' +
     '"dynamic_pricing_experience": {"score": число, "comment": "..."}, "it_team_strength": {"score": число, "comment": "..."}}, ' +
+    (stageInfo ? '"next_step_readiness": {"score": число, "comment": "оценка готовности перехода на следующий этап и рекомендация действий"}, ' : '') +
     '"summary": "общий анализ 2-3 предложения", "recommendation": "рекомендация по продаже 1-2 предложения"}';
 
   var userMessage = 'Проанализируй компанию-застройщика. Используй ВСЕ свои знания об этой компании в дополнение к предоставленным данным. Обращай особое внимание на текущие проблемы, скандалы, финансовые трудности, запросы госпомощи.\\n\\n';
@@ -6167,14 +6273,20 @@ function buildDPricePrompts(companyName, finData, websiteText, newsText, customC
   if (websiteText) userMessage += '\\n=== КОНТЕНТ САЙТА КОМПАНИИ ===\\n' + websiteText + '\\n';
   if (newsText) userMessage += '\\n=== НОВОСТИ И УПОМИНАНИЯ ===\\n' + newsText + '\\n';
   if (customContext) userMessage += '\\n=== ДОПОЛНИТЕЛЬНЫЙ КОНТЕКСТ ОТ АНАЛИТИКА ===\\n' + customContext + '\\n';
+  if (stageInfo) {
+    userMessage += '\\n=== ТЕКУЩИЙ ЭТАП ВОРОНКИ ПРОДАЖ ===\\n';
+    userMessage += 'Текущий этап: ' + (stageInfo.currentStage || '?') + ' (этап ' + (stageInfo.currentStageOrder || '?') + ' из ' + (stageInfo.totalStages || '?') + ')\\n';
+    userMessage += 'Следующий этап: ' + (stageInfo.nextStage || '?') + '\\n';
+    if (stageInfo.history) userMessage += '\\nИстория взаимодействий:\\n' + stageInfo.history + '\\n';
+  }
 
   return { systemPrompt: systemPrompt, userMessage: userMessage };
 }
 
-function scoreDPrice(companyName, provider, model, customContext) {
+function scoreDPrice(companyName, provider, model, customContext, stageInfo) {
   provider = provider || getMetaKey('activeProvider') || 'anthropic';
   var data = gatherDPriceData(companyName);
-  var prompts = buildDPricePrompts(companyName, data.finData, data.websiteText, data.newsText, customContext);
+  var prompts = buildDPricePrompts(companyName, data.finData, data.websiteText, data.newsText, customContext, stageInfo);
   var responseText = callLLM(provider, model, prompts.systemPrompt, prompts.userMessage);
   var parsed = parseScoreJSON(responseText);
   parsed._sources = {
@@ -6319,11 +6431,11 @@ function computeAveragedScore(results) {
   return averaged;
 }
 
-function scoreDPriceMulti(companyName, providersArr, customContext) {
+function scoreDPriceMulti(companyName, providersArr, customContext, stageInfo) {
   // 1. Gather data ONCE
   var data = gatherDPriceData(companyName);
   // 2. Build prompts ONCE
-  var prompts = buildDPricePrompts(companyName, data.finData, data.websiteText, data.newsText, customContext);
+  var prompts = buildDPricePrompts(companyName, data.finData, data.websiteText, data.newsText, customContext, stageInfo);
 
   // 3. Build requests array for fetchAll
   var requests = [];
