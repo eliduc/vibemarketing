@@ -3746,6 +3746,10 @@ async function showDPriceModal(name) {
             <textarea id="dpCustomContext" placeholder="Например: компания недавно внедрила BIM, руководство активно ищет IT-решения, есть контакт с CTO..." style="width:100%;min-height:50px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--text);font-size:11px;resize:vertical;font-family:inherit"></textarea>
             <div style="font-size:10px;color:var(--dim);margin-top:1px">Информация о застройщике или продукте DPrice для AI-анализа</div>
             <label style="display:flex;align-items:center;gap:6px;font-size:11px;margin-top:6px;cursor:pointer">
+                <input type="checkbox" id="dpIncludeNotes" ${localStorage.getItem('dp_include_notes') === 'true' ? 'checked' : ''}>
+                Включить заметки о компании
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:11px;margin-top:4px;cursor:pointer">
                 <input type="checkbox" id="dpIncludeStageInfo" ${localStorage.getItem('dp_include_stage') === 'true' ? 'checked' : ''}>
                 Учитывать этап воронки продаж
             </label>
@@ -3762,6 +3766,25 @@ async function showDPriceModal(name) {
     `);
 
     setTimeout(() => {
+        const notesChk = document.getElementById('dpIncludeNotes');
+        const ctxArea = document.getElementById('dpCustomContext');
+        if (notesChk && ctxArea) {
+            const companyNotes = curData && curData.companies ? (curData.companies.find(c => c.name === name) || {}).notes || '' : '';
+            const applyNotes = () => {
+                if (notesChk.checked && companyNotes) {
+                    ctxArea.value = companyNotes + (ctxArea.value ? '\n' + ctxArea.value : '');
+                }
+            };
+            if (notesChk.checked) applyNotes();
+            notesChk.onchange = () => {
+                localStorage.setItem('dp_include_notes', notesChk.checked);
+                if (notesChk.checked && companyNotes) {
+                    if (!ctxArea.value.includes(companyNotes)) {
+                        ctxArea.value = companyNotes + (ctxArea.value ? '\n' + ctxArea.value : '');
+                    }
+                }
+            };
+        }
         const stageChk = document.getElementById('dpIncludeStageInfo');
         if (stageChk) stageChk.onchange = () => localStorage.setItem('dp_include_stage', stageChk.checked);
         dpBindProviderCheckboxes('dpModelSelect');
