@@ -1316,18 +1316,9 @@ function preloadLogos() {
         // Load logos via <img> (no CORS issues) — draw to canvas for 3D textures
         Object.entries(LOGO_URLS).forEach(([name, url]) => {
             const img = new Image();
-            img.crossOrigin = 'anonymous';
             img.onload = () => {
-                try {
-                    const c = document.createElement('canvas');
-                    c.width = 64; c.height = 64;
-                    const ctx = c.getContext('2d');
-                    ctx.drawImage(img, 0, 0, 64, 64);
-                    c.toDataURL(); // test CORS — throws if tainted
-                    logoCache[name] = img;
-                } catch(e) {
-                    logoCache[name] = generateInitialsLogo(name);
-                }
+                // Without crossOrigin, canvas is tainted — use initials for 3D, img for 2D HTML
+                logoCache[name] = generateInitialsLogo(name);
                 done();
             };
             img.onerror = () => { logoCache[name] = generateInitialsLogo(name); done(); };
